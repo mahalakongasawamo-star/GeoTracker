@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": true,
+    "types": ["node"],
+    "paths": {
+      "@geotracker/shared": ["../../packages/shared/src/index.ts"],
+      "@geotracker/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "../../packages/shared/src/**/*"],
+  "exclude": ["dist", "node_modules", "**/*.test.ts", "vitest.config.ts", "vitest.setup.ts"]
+}

@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`pipeline: mock adapter → parsing → scoring → aggregation > produces different scores for different domains 1`] = `
+{
+  "a": [
+    "green",
+    "green",
+    "green",
+    "green",
+    "green",
+  ],
+  "b": [
+    "yellow",
+    "green",
+    "green",
+    "green",
+    "yellow",
+  ],
+}
+`;

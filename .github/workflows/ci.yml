@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.11"
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck API
+        run: pnpm --filter @geotracker/api typecheck
+
+      - name: Typecheck shared
+        run: pnpm --filter @geotracker/shared typecheck
+
+      - name: Typecheck web
+        run: pnpm --filter @geotracker/web typecheck
+
+      - name: API unit tests
+        run: pnpm --filter @geotracker/api test
+
+      - name: Build API
+        run: pnpm --filter @geotracker/api build

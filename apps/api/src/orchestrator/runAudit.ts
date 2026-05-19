@@ -8,6 +8,7 @@ import { LLM_PROVIDERS, type LlmProvider, type ProgressEvent } from "@geotracker
 import { db } from "../db/client.js";
 import { auditResults, audits } from "../db/schema.js";
 import { expandCatchment } from "../geospatial/catchment.js";
+import { createHealthBatch } from "../llm/health.js";
 import { getAllAdapters } from "../llm/index.js";
 import { extractMentions } from "../parsing/extractMentions.js";
 import { resolvePrompts } from "../prompts/resolver.js";
@@ -43,6 +44,7 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
 
   const totalCells = adapters.length * prompts.length;
   let completedCells = 0;
+  const health = createHealthBatch();
 
   const tasks: Array<Promise<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }>> = [];
 
@@ -55,6 +57,8 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
           domain: input.domain,
           city: prompt.city,
         });
+
+        health.record(adapter.provider, response.ok, response.ok ? undefined : response.reason);
 
         const llmAvailable = response.ok;
         const text = response.ok ? response.text : "";
@@ -111,6 +115,8 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
     .update(audits)
     .set({ status, score, completedAt: new Date() })
     .where(eq(audits.id, auditId));
+
+  await health.flush();
 
   await publishProgress(auditId, {
     type: "complete",

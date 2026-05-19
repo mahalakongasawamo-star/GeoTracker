@@ -74,6 +74,7 @@ export const businesses = pgTable("businesses", {
   domain: text("domain").notNull(),
   name: text("name"),
   address: text("address"),
+  seedCity: text("seed_city"),
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   industryId: uuid("industry_id").references(() => industries.id),

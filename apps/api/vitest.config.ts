@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     coverage: { reporter: ["text", "html"] },
+    pool: "forks",
   },
   resolve: {
     alias: {

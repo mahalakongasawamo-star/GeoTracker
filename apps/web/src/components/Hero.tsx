@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { INDUSTRIES } from "@geotracker/shared";
 import { startAudit } from "../lib/api";
 
 export default function Hero() {
   const [domain, setDomain] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [industrySlug, setIndustrySlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +23,7 @@ export default function Hero() {
         domain: domain.trim(),
         businessName: name.trim() || undefined,
         city: city.trim() || undefined,
+        industrySlug: industrySlug || undefined,
       });
       window.location.href = `/audit/${id}`;
     } catch (err) {
@@ -66,8 +69,19 @@ export default function Hero() {
           value={city}
           onChange={(e) => setCity(e.target.value)}
           placeholder="City (optional, defaults to Austin)"
-          className="md:col-span-2 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
+        <select
+          aria-label="Industry"
+          value={industrySlug}
+          onChange={(e) => setIndustrySlug(e.target.value)}
+          className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+        >
+          <option value="">Industry — auto-detect</option>
+          {INDUSTRIES.map((i) => (
+            <option key={i.slug} value={i.slug}>{i.displayName}</option>
+          ))}
+        </select>
         <button
           type="submit"
           disabled={submitting}

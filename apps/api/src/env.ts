@@ -48,7 +48,6 @@ const schema = z.object({
 
 const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
-  // eslint-disable-next-line no-console
   console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
   throw new Error("Invalid environment");
 }

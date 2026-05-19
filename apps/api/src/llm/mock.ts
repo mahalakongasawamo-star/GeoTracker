@@ -90,9 +90,12 @@ class MockAdapter implements LlmAdapter {
 
   async query(input: LlmQuery): Promise<LlmResponse> {
     const behavior = pickBehavior(this.provider, input.domain);
-    // Tiny synthetic latency so the progress bar feels real.
+    // Tiny synthetic latency so the progress bar feels real. Skipped under
+    // NODE_ENV=test so test suites stay fast.
     const latencyMs = 150 + (hash(`${this.provider}|${input.city}`) % 800);
-    await new Promise((r) => setTimeout(r, latencyMs));
+    if (process.env.NODE_ENV !== "test") {
+      await new Promise((r) => setTimeout(r, latencyMs));
+    }
     if (behavior.kind === "unavailable") {
       return {
         ok: false,

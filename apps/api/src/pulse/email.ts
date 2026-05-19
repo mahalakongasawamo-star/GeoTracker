@@ -15,9 +15,8 @@ export interface EmailSendResult {
 
 export async function sendEmail(email: PulseEmail): Promise<EmailSendResult> {
   if (!env.RESEND_API_KEY) {
-    // Dev fallback: log to stdout. Tests and local runs work without a key.
-    // eslint-disable-next-line no-console
-    console.log(`[pulse-mock] -> ${email.to}: ${email.subject}`);
+    // Dev fallback: log to stderr. Tests and local runs work without a key.
+    console.warn(`[pulse-mock] -> ${email.to}: ${email.subject}`);
     return { ok: true, id: "mock" };
   }
   const res = await fetch("https://api.resend.com/emails", {

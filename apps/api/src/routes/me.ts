@@ -110,6 +110,7 @@ export async function meRoutes(app: FastifyInstance) {
         businessId: pulseSubscriptions.businessId,
         domain: businesses.domain,
         name: businesses.name,
+        seedCity: businesses.seedCity,
         industrySlug: industries.slug,
       })
       .from(pulseSubscriptions)
@@ -130,7 +131,7 @@ export async function meRoutes(app: FastifyInstance) {
       domain: row[0].domain,
       businessName: row[0].name ?? undefined,
       industrySlug: row[0].industrySlug ?? "dentists",
-      seedCity: "Austin",
+      seedCity: row[0].seedCity ?? "Austin",
     });
 
     return reply.send({ auditId: audit!.id });

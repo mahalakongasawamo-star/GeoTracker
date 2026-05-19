@@ -1,4 +1,4 @@
-import { INDUSTRIES, PROMPT_SETS, getPromptSet } from "@geotracker/shared";
+import { INDUSTRIES, getPromptSet } from "@geotracker/shared";
 import { eq } from "drizzle-orm";
 import { db } from "./client.js";
 import { industries, promptSets } from "./schema.js";
@@ -43,13 +43,11 @@ async function main() {
     }
   }
 
-  // eslint-disable-next-line no-console
-  console.log(`✓ seeded ${INDUSTRIES.length} industries / prompt sets`);
+  console.warn(`✓ seeded ${INDUSTRIES.length} industries / prompt sets`);
   process.exit(0);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

@@ -8,12 +8,10 @@ async function main() {
   const db = drizzle(sql);
   await migrate(db, { migrationsFolder: "./src/db/migrations" });
   await sql.end();
-  // eslint-disable-next-line no-console
-  console.log("✓ migrations applied");
+  console.warn("✓ migrations applied");
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

@@ -19,7 +19,12 @@ export default function LLMGrid({ rows }: Props) {
   function worstBand(prompt: string, llm: string): string {
     const cells = rows.filter((r) => r.promptText === prompt && r.llm === llm);
     if (cells.length === 0) return "unavailable";
-    return cells.reduce((acc, c) => (order[c.scoreBand]! < order[acc]! ? c.scoreBand : acc), "green");
+    // Pick the worst band across the cells (lowest order). Seed with the
+    // first cell's band so a single "green" cell stays green.
+    return cells.reduce<string>(
+      (acc, c) => (order[c.scoreBand]! < order[acc]! ? c.scoreBand : acc),
+      cells[0]!.scoreBand,
+    );
   }
 
   return (

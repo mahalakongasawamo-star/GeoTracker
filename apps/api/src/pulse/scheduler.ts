@@ -1,6 +1,7 @@
 // Pulse Report scheduler: a BullMQ repeatable job that finds subscriptions
-// whose nextRunAt is due, re-runs an audit, emails the user, and rolls the
-// nextRunAt forward by 30 days.
+// whose nextRunAt is due. For each, enqueues a re-audit via the existing
+// audits queue (so it benefits from the worker's concurrency) and a
+// follow-up pulse-email job that emails the user once the audit completes.
 
 import { Worker, Queue } from "bullmq";
 import IORedis from "ioredis";
@@ -12,15 +13,24 @@ import { auditQueue } from "../orchestrator/queue.js";
 import { sendEmail } from "./email.js";
 import { buildPulseEmail } from "./template.js";
 import { buildUnsubscribeUrl } from "./unsubscribe.js";
-import { runAudit } from "../orchestrator/runAudit.js";
 
 const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
 export const pulseQueue = new Queue("pulse", { connection });
 
 const PULSE_TICK = "pulse-tick";
+const PULSE_EMAIL = "pulse-email";
 
-async function tick(): Promise<void> {
+interface PulseEmailJob {
+  subscriptionId: string;
+  auditId: string;
+  email: string;
+  businessDomain: string;
+  businessName: string | null;
+  previousAuditId: string | null;
+}
+
+async function enqueueDueSubscriptions(): Promise<void> {
   const now = new Date();
   const due = await db
     .select({
@@ -33,6 +43,7 @@ async function tick(): Promise<void> {
       domain: businesses.domain,
       name: businesses.name,
       industrySlug: industries.slug,
+      seedCity: businesses.seedCity,
     })
     .from(pulseSubscriptions)
     .innerJoin(users, eq(pulseSubscriptions.userId, users.id))
@@ -43,7 +54,6 @@ async function tick(): Promise<void> {
 
   for (const row of due) {
     if (!row.pulseOptIn) {
-      // Slide nextRunAt forward so opted-out subs don't busy-loop.
       await db
         .update(pulseSubscriptions)
         .set({ nextRunAt: addDays(now, 30) })
@@ -56,49 +66,73 @@ async function tick(): Promise<void> {
       .values({ businessId: row.businessId, status: "queued", score: 0, catchmentCities: [] })
       .returning({ id: audits.id });
 
-    // Re-audit inline so we have the score ready before emailing. The main
-    // queue worker would also handle this, but the pulse job owns the email
-    // step and benefits from synchronous completion.
-    await runAudit({
-      auditId: audit!.id,
-      businessId: row.businessId,
-      domain: row.domain,
-      businessName: row.name ?? undefined,
-      industrySlug: row.industrySlug ?? "dentists",
-      seedCity: "Austin",
-    });
-
-    const fresh = await db
-      .select({ id: audits.id, score: audits.score })
-      .from(audits)
-      .where(eq(audits.id, audit!.id))
-      .limit(1);
-
-    const previous = row.lastAuditId
-      ? await db
-          .select({ score: audits.score })
-          .from(audits)
-          .where(eq(audits.id, row.lastAuditId))
-          .limit(1)
-      : [];
-
-    const { html, text, subject } = buildPulseEmail({
-      recipientEmail: row.email,
-      businessDomain: row.domain,
-      businessName: row.name ?? undefined,
-      currentScore: fresh[0]?.score ?? 0,
-      previousScore: previous[0]?.score ?? null,
-      auditId: audit!.id,
-      unsubscribeUrl: buildUnsubscribeUrl(row.subId),
-    });
-
-    await sendEmail({ to: row.email, subject, html, text });
-
+    // Slide the next run forward NOW so a transient failure doesn't keep
+    // re-enqueuing the same subscription on every tick.
     await db
       .update(pulseSubscriptions)
       .set({ lastAuditId: audit!.id, nextRunAt: addDays(now, 30) })
       .where(eq(pulseSubscriptions.id, row.subId));
+
+    await auditQueue.add(
+      "run",
+      {
+        auditId: audit!.id,
+        businessId: row.businessId,
+        domain: row.domain,
+        businessName: row.name ?? undefined,
+        industrySlug: row.industrySlug ?? "dentists",
+        seedCity: row.seedCity ?? "Austin",
+      },
+      { attempts: 2, backoff: { type: "exponential", delay: 5_000 } },
+    );
+
+    const emailJob: PulseEmailJob = {
+      subscriptionId: row.subId,
+      auditId: audit!.id,
+      email: row.email,
+      businessDomain: row.domain,
+      businessName: row.name,
+      previousAuditId: row.lastAuditId,
+    };
+    // Delay the email by a budget that should comfortably cover the audit
+    // (BRD §7.2: under 15s). If the audit is still queued, the email job
+    // will see status != complete and re-delay itself.
+    await pulseQueue.add(PULSE_EMAIL, emailJob, { delay: 30_000, attempts: 3 });
   }
+}
+
+async function sendPulseEmail(job: PulseEmailJob): Promise<void> {
+  const auditRow = await db
+    .select({ status: audits.status, score: audits.score })
+    .from(audits)
+    .where(eq(audits.id, job.auditId))
+    .limit(1);
+
+  // If the audit isn't done yet, re-defer.
+  if (!auditRow[0] || (auditRow[0].status !== "complete" && auditRow[0].status !== "partial")) {
+    await pulseQueue.add(PULSE_EMAIL, job, { delay: 15_000, attempts: 1 });
+    return;
+  }
+
+  const previous = job.previousAuditId
+    ? await db
+        .select({ score: audits.score })
+        .from(audits)
+        .where(eq(audits.id, job.previousAuditId))
+        .limit(1)
+    : [];
+
+  const { html, text, subject } = buildPulseEmail({
+    recipientEmail: job.email,
+    businessDomain: job.businessDomain,
+    businessName: job.businessName ?? undefined,
+    currentScore: auditRow[0].score,
+    previousScore: previous[0]?.score ?? null,
+    auditId: job.auditId,
+    unsubscribeUrl: buildUnsubscribeUrl(job.subscriptionId),
+  });
+
+  await sendEmail({ to: job.email, subject, html, text });
 }
 
 function addDays(date: Date, days: number): Date {
@@ -106,25 +140,32 @@ function addDays(date: Date, days: number): Date {
 }
 
 export function startPulseScheduler() {
-  const worker = new Worker(
+  const worker = new Worker<PulseEmailJob | Record<string, never>>(
     "pulse",
     async (job) => {
-      if (job.name === PULSE_TICK) await tick();
+      if (job.name === PULSE_TICK) {
+        await enqueueDueSubscriptions();
+      } else if (job.name === PULSE_EMAIL) {
+        await sendPulseEmail(job.data as PulseEmailJob);
+      }
     },
-    { connection, concurrency: 1 },
+    { connection, concurrency: 5 },
   );
 
-  // Tick once an hour; the tick scans for due subs.
-  void pulseQueue.add(PULSE_TICK, {}, {
-    repeat: { pattern: "0 * * * *" },
-    removeOnComplete: true,
-    removeOnFail: 100,
-  });
+  // Tick hourly; the tick scans for due subs.
+  void pulseQueue.add(
+    PULSE_TICK,
+    {},
+    {
+      repeat: { pattern: "0 * * * *" },
+      removeOnComplete: true,
+      removeOnFail: 100,
+    },
+  );
 
   return worker;
 }
 
-// Exposed for the admin-triggered manual run.
 export async function runPulseTickNow(): Promise<void> {
-  await tick();
+  await enqueueDueSubscriptions();
 }

@@ -32,7 +32,16 @@ function inferIndustrySlug(domain: string): string {
 }
 
 export async function auditRoutes(app: FastifyInstance) {
-  app.post("/audits", async (req, reply) => {
+  app.post(
+    "/audits",
+    {
+      config: {
+        // Per-IP rate limit. Sales reps share an IP behind corp NAT, so this
+        // is generous; tune with caller telemetry once we have it.
+        rateLimit: { max: 30, timeWindow: "1 minute" },
+      },
+    },
+    async (req, reply) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
@@ -55,6 +64,7 @@ export async function auditRoutes(app: FastifyInstance) {
         domain,
         name: businessName ?? null,
         industryId,
+        seedCity,
         userId: req.user?.id ?? null,
       })
       .returning({ id: businesses.id });
@@ -78,7 +88,8 @@ export async function auditRoutes(app: FastifyInstance) {
     );
 
     return reply.code(202).send({ id: audit!.id });
-  });
+    },
+  );
 
   app.get<{ Params: { id: string } }>("/audits/:id", async (req, reply) => {
     const id = req.params.id;
