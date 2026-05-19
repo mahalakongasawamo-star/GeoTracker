@@ -1,14 +1,17 @@
 import { env } from "./env.js";
 import { startAuditWorker } from "./orchestrator/queue.js";
+import { startPulseScheduler } from "./pulse/scheduler.js";
 import { buildServer } from "./server.js";
 
 async function main() {
   const app = await buildServer();
-  const worker = startAuditWorker();
+  const auditWorker = startAuditWorker();
+  const pulseWorker = startPulseScheduler();
 
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, "shutting down");
-    await worker.close();
+    await auditWorker.close();
+    await pulseWorker.close();
     await app.close();
     process.exit(0);
   };

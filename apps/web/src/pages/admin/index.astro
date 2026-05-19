@@ -1,0 +1,14 @@
+---
+import Base from "../../layouts/Base.astro";
+import Header from "../../components/Header.tsx";
+import AdminDashboard from "../../components/AdminDashboard.tsx";
+
+export const prerender = false;
+---
+
+<Base title="GeoTracker — Admin">
+  <Header client:load />
+  <main class="max-w-6xl mx-auto px-6 py-10">
+    <AdminDashboard client:load />
+  </main>
+</Base>

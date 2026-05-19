@@ -51,7 +51,12 @@ export async function auditRoutes(app: FastifyInstance) {
 
     const [biz] = await db
       .insert(businesses)
-      .values({ domain, name: businessName ?? null, industryId })
+      .values({
+        domain,
+        name: businessName ?? null,
+        industryId,
+        userId: req.user?.id ?? null,
+      })
       .returning({ id: businesses.id });
 
     const [audit] = await db

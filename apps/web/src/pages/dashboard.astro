@@ -1,0 +1,14 @@
+---
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.tsx";
+import UserDashboard from "../components/UserDashboard.tsx";
+
+export const prerender = false;
+---
+
+<Base title="GeoTracker — Dashboard">
+  <Header client:load />
+  <main class="max-w-5xl mx-auto px-6 py-10">
+    <UserDashboard client:load />
+  </main>
+</Base>

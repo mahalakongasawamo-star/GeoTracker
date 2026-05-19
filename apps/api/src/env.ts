@@ -28,6 +28,16 @@ const schema = z.object({
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
   LINKEDIN_OAUTH_CLIENT_ID: z.string().optional(),
   LINKEDIN_OAUTH_CLIENT_SECRET: z.string().optional(),
+  API_ORIGIN: z.string().url().default("http://localhost:4000"),
+  ADMIN_EMAILS: z
+    .string()
+    .default("")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
 
   RESEND_API_KEY: z.string().optional(),
   PULSE_FROM_EMAIL: z.string().email().default("pulse@geotracker.iozera.com"),
