@@ -25,7 +25,7 @@ export interface RunAuditInput {
 
 export async function runAudit(input: RunAuditInput): Promise<void> {
   const { auditId } = input;
-  const catchment = expandCatchment({
+  const catchment = await expandCatchment({
     industrySlug: input.industrySlug,
     seedCity: input.seedCity,
   });
