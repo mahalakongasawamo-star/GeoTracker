@@ -1,0 +1,159 @@
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { eq } from "drizzle-orm";
+import { INDUSTRIES, type AuditDetail, type AuditSummary } from "@geotracker/shared";
+import { db } from "../db/client.js";
+import { audits, auditResults, businesses, industries } from "../db/schema.js";
+import { auditQueue } from "../orchestrator/queue.js";
+import { subscribeProgress } from "../realtime/progress.js";
+
+const createSchema = z.object({
+  domain: z
+    .string()
+    .trim()
+    .min(3)
+    .transform((s) => s.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]!.toLowerCase()),
+  businessName: z.string().trim().min(1).optional(),
+  industrySlug: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+});
+
+function inferIndustrySlug(domain: string): string {
+  // Stub heuristic — real version uses a classifier or asks the user (BRD §5.1).
+  const lower = domain.toLowerCase();
+  if (lower.includes("dental") || lower.includes("dentist") || lower.includes("ortho")) return "dentists";
+  if (lower.includes("hvac") || lower.includes("plumb") || lower.includes("electric")) return "hvac";
+  if (lower.includes("law") || lower.includes("legal") || lower.includes("attorney")) return "law-firms";
+  if (lower.includes("vet")) return "veterinarians";
+  if (lower.includes("real") || lower.includes("realty")) return "real-estate";
+  if (lower.includes("roof")) return "roofing";
+  if (lower.includes("pest")) return "pest-control";
+  return "dentists";
+}
+
+export async function auditRoutes(app: FastifyInstance) {
+  app.post("/audits", async (req, reply) => {
+    const parsed = createSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    const { domain, businessName, city: cityInput, industrySlug: explicitSlug } = parsed.data;
+    const slug = explicitSlug && INDUSTRIES.some((i) => i.slug === explicitSlug)
+      ? explicitSlug
+      : inferIndustrySlug(domain);
+    const seedCity = cityInput ?? "Austin";
+
+    const industryRow = await db
+      .select({ id: industries.id })
+      .from(industries)
+      .where(eq(industries.slug, slug))
+      .limit(1);
+    const industryId = industryRow[0]?.id ?? null;
+
+    const [biz] = await db
+      .insert(businesses)
+      .values({ domain, name: businessName ?? null, industryId })
+      .returning({ id: businesses.id });
+
+    const [audit] = await db
+      .insert(audits)
+      .values({ businessId: biz!.id, status: "queued", score: 0, catchmentCities: [] })
+      .returning({ id: audits.id });
+
+    await auditQueue.add(
+      "run",
+      {
+        auditId: audit!.id,
+        businessId: biz!.id,
+        domain,
+        businessName,
+        industrySlug: slug,
+        seedCity,
+      },
+      { attempts: 1, removeOnComplete: true, removeOnFail: false },
+    );
+
+    return reply.code(202).send({ id: audit!.id });
+  });
+
+  app.get<{ Params: { id: string } }>("/audits/:id", async (req, reply) => {
+    const id = req.params.id;
+    const auditRow = await db
+      .select({
+        id: audits.id,
+        status: audits.status,
+        score: audits.score,
+        startedAt: audits.startedAt,
+        completedAt: audits.completedAt,
+        catchmentCities: audits.catchmentCities,
+        domain: businesses.domain,
+        name: businesses.name,
+        industrySlug: industries.slug,
+      })
+      .from(audits)
+      .innerJoin(businesses, eq(audits.businessId, businesses.id))
+      .leftJoin(industries, eq(businesses.industryId, industries.id))
+      .where(eq(audits.id, id))
+      .limit(1);
+
+    if (!auditRow[0]) return reply.code(404).send({ error: "not_found" });
+    const a = auditRow[0];
+
+    const rows = await db
+      .select()
+      .from(auditResults)
+      .where(eq(auditResults.auditId, id));
+
+    const summary: AuditSummary = {
+      id: a.id,
+      status: a.status,
+      score: a.score,
+      startedAt: a.startedAt.toISOString(),
+      completedAt: a.completedAt ? a.completedAt.toISOString() : undefined,
+      catchmentCities: (a.catchmentCities as string[]) ?? [],
+      business: {
+        domain: a.domain,
+        name: a.name ?? undefined,
+        industrySlug: a.industrySlug ?? undefined,
+      },
+    };
+
+    const detail: AuditDetail = {
+      ...summary,
+      rows: rows.map((r) => ({
+        id: r.id,
+        llm: r.llm,
+        promptText: r.promptText,
+        city: r.city,
+        mentioned: r.mentioned,
+        rank: r.rank,
+        hasContactInfo: r.hasContactInfo,
+        caveatFlag: r.caveatFlag,
+        scoreBand: r.scoreBand,
+        responseExcerpt: r.responseRaw ? r.responseRaw.slice(0, 280) : undefined,
+      })),
+    };
+
+    return reply.send(detail);
+  });
+
+  app.get<{ Params: { id: string } }>("/audits/:id/stream", async (req, reply) => {
+    const id = req.params.id;
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    });
+    reply.raw.write(`retry: 2000\n\n`);
+
+    const unsubscribe = subscribeProgress(id, (event) => {
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      if (event.type === "complete" || event.type === "error") {
+        void unsubscribe().finally(() => reply.raw.end());
+      }
+    });
+
+    req.raw.on("close", () => {
+      void unsubscribe();
+    });
+  });
+}

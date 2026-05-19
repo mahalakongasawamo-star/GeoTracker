@@ -1,0 +1,25 @@
+{
+  "name": "geotracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GeoTracker — AI visibility audit platform (Iozera)",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "db:migrate": "pnpm --filter @geotracker/api db:migrate",
+    "db:seed": "pnpm --filter @geotracker/api db:seed",
+    "docker:up": "docker compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

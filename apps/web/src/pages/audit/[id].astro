@@ -1,0 +1,15 @@
+---
+import Base from "../../layouts/Base.astro";
+import AuditRunner from "../../components/AuditRunner.tsx";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect("/");
+---
+
+<Base title="GeoTracker — Running audit">
+  <main class="max-w-5xl mx-auto px-6 py-10">
+    <AuditRunner auditId={id} client:load />
+  </main>
+</Base>
