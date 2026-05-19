@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { INDUSTRIES, type AuditDetail, type AuditSummary } from "@geotracker/shared";
 import { db } from "../db/client.js";
 import { audits, auditResults, businesses, industries } from "../db/schema.js";
+import { loadUser } from "../auth/decorate.js";
 import { auditQueue } from "../orchestrator/queue.js";
+import { inferIndustrySlug } from "../prompts/inferIndustry.js";
 import { subscribeProgress } from "../realtime/progress.js";
 
 const createSchema = z.object({
@@ -12,29 +14,19 @@ const createSchema = z.object({
     .string()
     .trim()
     .min(3)
+    .max(253) // DNS max
     .transform((s) => s.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]!.toLowerCase()),
-  businessName: z.string().trim().min(1).optional(),
-  industrySlug: z.string().trim().optional(),
-  city: z.string().trim().optional(),
+  businessName: z.string().trim().min(1).max(120).optional(),
+  industrySlug: z.string().trim().max(60).optional(),
+  city: z.string().trim().max(80).optional(),
 });
-
-function inferIndustrySlug(domain: string): string {
-  // Stub heuristic — real version uses a classifier or asks the user (BRD §5.1).
-  const lower = domain.toLowerCase();
-  if (lower.includes("dental") || lower.includes("dentist") || lower.includes("ortho")) return "dentists";
-  if (lower.includes("hvac") || lower.includes("plumb") || lower.includes("electric")) return "hvac";
-  if (lower.includes("law") || lower.includes("legal") || lower.includes("attorney")) return "law-firms";
-  if (lower.includes("vet")) return "veterinarians";
-  if (lower.includes("real") || lower.includes("realty")) return "real-estate";
-  if (lower.includes("roof")) return "roofing";
-  if (lower.includes("pest")) return "pest-control";
-  return "dentists";
-}
 
 export async function auditRoutes(app: FastifyInstance) {
   app.post(
     "/audits",
     {
+      // loadUser is optional here — audits can be anonymous.
+      preHandler: loadUser,
       config: {
         // Per-IP rate limit. Sales reps share an IP behind corp NAT, so this
         // is generous; tune with caller telemetry once we have it.
@@ -46,9 +38,10 @@ export async function auditRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const { domain, businessName, city: cityInput, industrySlug: explicitSlug } = parsed.data;
-    const slug = explicitSlug && INDUSTRIES.some((i) => i.slug === explicitSlug)
-      ? explicitSlug
-      : inferIndustrySlug(domain);
+    const slug =
+      explicitSlug && INDUSTRIES.some((i) => i.slug === explicitSlug)
+        ? explicitSlug
+        : inferIndustrySlug(`${domain} ${businessName ?? ""}`);
     const seedCity = cityInput ?? "Austin";
 
     const industryRow = await db
@@ -58,16 +51,45 @@ export async function auditRoutes(app: FastifyInstance) {
       .limit(1);
     const industryId = industryRow[0]?.id ?? null;
 
-    const [biz] = await db
-      .insert(businesses)
-      .values({
-        domain,
-        name: businessName ?? null,
-        industryId,
-        seedCity,
-        userId: req.user?.id ?? null,
-      })
-      .returning({ id: businesses.id });
+    // Idempotent on (user_id, domain) for logged-in users: re-use an
+    // existing business row so multiple audits for the same business
+    // share the Pulse subscription target and the dashboard isn't
+    // littered with duplicates.
+    const userId = req.user?.id ?? null;
+    const existing = userId
+      ? await db
+          .select({ id: businesses.id })
+          .from(businesses)
+          .where(and(eq(businesses.userId, userId), eq(businesses.domain, domain)))
+          .limit(1)
+      : [];
+
+    let bizId: string;
+    if (existing[0]) {
+      bizId = existing[0].id;
+      // Refresh the metadata in case the user gave us a name/city this time.
+      await db
+        .update(businesses)
+        .set({
+          name: businessName ?? null,
+          industryId,
+          seedCity,
+        })
+        .where(eq(businesses.id, bizId));
+    } else {
+      const inserted = await db
+        .insert(businesses)
+        .values({
+          domain,
+          name: businessName ?? null,
+          industryId,
+          seedCity,
+          userId,
+        })
+        .returning({ id: businesses.id });
+      bizId = inserted[0]!.id;
+    }
+    const biz = { id: bizId };
 
     const [audit] = await db
       .insert(audits)

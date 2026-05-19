@@ -3,6 +3,7 @@ import type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";
 
 interface AnthropicMessagesResponse {
   content?: Array<{ type: string; text?: string }>;
+  usage?: { input_tokens?: number; output_tokens?: number };
 }
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -45,7 +46,13 @@ export function createAnthropicAdapter(apiKey: string, model = "claude-haiku-4-5
           message: "empty completion",
         };
       }
-      return { ok: true, provider: "claude", text, latencyMs: result.latencyMs };
+      const usage = result.data.usage
+        ? {
+            inputTokens: result.data.usage.input_tokens,
+            outputTokens: result.data.usage.output_tokens,
+          }
+        : undefined;
+      return { ok: true, provider: "claude", text, latencyMs: result.latencyMs, usage };
     },
   };
 }

@@ -3,10 +3,13 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
 import { audits, businesses, industries, pulseSubscriptions, users } from "../db/schema.js";
-import { requireUser } from "../auth/decorate.js";
+import { requireAuth, requireUser } from "../auth/decorate.js";
 import { auditQueue } from "../orchestrator/queue.js";
 
 export async function meRoutes(app: FastifyInstance) {
+  // Every /me/* route needs an authenticated user.
+  app.addHook("preHandler", requireAuth);
+
   app.get("/me/audits", async (req, reply) => {
     const user = requireUser(req);
     const rows = await db

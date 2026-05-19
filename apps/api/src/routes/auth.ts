@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import oauthPlugin, { type OAuth2Namespace } from "@fastify/oauth2";
+import { eq } from "drizzle-orm";
+import { loadUser, requireAuth } from "../auth/decorate.js";
 import { env } from "../env.js";
+import { db } from "../db/client.js";
+import { businesses, pulseSubscriptions, users } from "../db/schema.js";
 import { upsertOAuthUser } from "../auth/upsertUser.js";
 import {
   SESSION_COOKIE,
@@ -99,7 +103,8 @@ export async function authRoutes(app: FastifyInstance) {
     });
   }
 
-  app.get("/auth/me", async (req) => {
+  // /auth/me needs an attempt to read the cookie; it never throws on miss.
+  app.get("/auth/me", { preHandler: loadUser }, async (req) => {
     if (!req.user) return { user: null };
     return {
       user: {
@@ -114,6 +119,17 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/logout", async (_req, reply) => {
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     return { ok: true };
+  });
+
+  // GDPR / CCPA right-to-delete. Cascades to businesses (and thus audits +
+  // audit_results) via the FK and explicitly purges pulse_subscriptions.
+  app.delete("/me", { preHandler: requireAuth }, async (req, reply) => {
+    const user = req.user!;
+    await db.delete(pulseSubscriptions).where(eq(pulseSubscriptions.userId, user.id));
+    await db.delete(businesses).where(eq(businesses.userId, user.id));
+    await db.delete(users).where(eq(users.id, user.id));
+    reply.clearCookie(SESSION_COOKIE, { path: "/" });
+    return reply.send({ ok: true });
   });
 
   // Surface which providers are actually configured so the web UI can

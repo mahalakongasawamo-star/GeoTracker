@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS "audit_results" (
 	"has_contact_info" boolean DEFAULT false NOT NULL,
 	"caveat_flag" boolean DEFAULT false NOT NULL,
 	"score_band" "score_band" DEFAULT 'unavailable' NOT NULL,
+	"input_tokens" integer,
+	"output_tokens" integer,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -96,7 +98,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "businesses" ADD CONSTRAINT "businesses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+ ALTER TABLE "businesses" ADD CONSTRAINT "businesses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -136,6 +138,7 @@ CREATE INDEX IF NOT EXISTS "audit_results_audit_idx" ON "audit_results" USING bt
 CREATE INDEX IF NOT EXISTS "audits_business_idx" ON "audits" USING btree ("business_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "audits_status_idx" ON "audits" USING btree ("status");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "businesses_domain_idx" ON "businesses" USING btree ("domain");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "businesses_user_domain_idx" ON "businesses" USING btree ("user_id","domain") WHERE "businesses"."user_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "industries_slug_idx" ON "industries" USING btree ("slug");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "prompt_sets_industry_idx" ON "prompt_sets" USING btree ("industry_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "pulse_user_business_idx" ON "pulse_subscriptions" USING btree ("user_id","business_id");--> statement-breakpoint

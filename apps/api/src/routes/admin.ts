@@ -10,7 +10,7 @@ import {
   industries,
   users,
 } from "../db/schema.js";
-import { requireUser } from "../auth/decorate.js";
+import { requireAuth, requireUser } from "../auth/decorate.js";
 import { runPulseTickNow } from "../pulse/scheduler.js";
 
 function requireAdmin(req: FastifyRequest) {
@@ -24,6 +24,8 @@ function requireAdmin(req: FastifyRequest) {
 }
 
 export async function adminRoutes(app: FastifyInstance) {
+  app.addHook("preHandler", requireAuth);
+
   app.get("/admin/leads", async (req, reply) => {
     requireAdmin(req);
     // BRD §12.3 Lead Routing Bot: flag low-score audits as high-priority.
@@ -65,10 +67,18 @@ export async function adminRoutes(app: FastifyInstance) {
         lowScore: sql<number>`count(*) filter (where ${audits.score} < 40 and ${audits.status} in ('complete','partial'))::int`,
       })
       .from(audits);
-    const totalCells = await db.select({ n: sql<number>`count(*)::int` }).from(auditResults);
+    const cellStats = await db
+      .select({
+        totalCells: sql<number>`count(*)::int`,
+        inputTokens: sql<number>`coalesce(sum(${auditResults.inputTokens}), 0)::int`,
+        outputTokens: sql<number>`coalesce(sum(${auditResults.outputTokens}), 0)::int`,
+      })
+      .from(auditResults);
     return reply.send({
       ...(stats[0] ?? { total: 0, completed: 0, avgScore: 0, lowScore: 0 }),
-      totalCells: totalCells[0]?.n ?? 0,
+      totalCells: cellStats[0]?.totalCells ?? 0,
+      inputTokens: cellStats[0]?.inputTokens ?? 0,
+      outputTokens: cellStats[0]?.outputTokens ?? 0,
     });
   });
 

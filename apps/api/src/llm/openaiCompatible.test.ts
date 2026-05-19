@@ -56,6 +56,20 @@ describe("OpenAI-compatible adapter", () => {
     if (!result.ok) expect(result.reason).toBe("network");
   });
 
+  it("captures token usage when the provider reports it", async () => {
+    mockJsonOnce({
+      choices: [{ message: { content: "1. Bright Smiles Dental." } }],
+      usage: { prompt_tokens: 42, completion_tokens: 17 },
+    });
+    const adapter = createOpenAICompatibleAdapter(baseCfg);
+    const result = await adapter.query({ prompt: "x", domain: "x.com", city: "Austin" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.usage?.inputTokens).toBe(42);
+      expect(result.usage?.outputTokens).toBe(17);
+    }
+  });
+
   it("treats an empty completion as failure", async () => {
     mockJsonOnce({ choices: [{ message: { content: "   " } }] });
     const adapter = createOpenAICompatibleAdapter(baseCfg);

@@ -5,6 +5,8 @@ export interface PulseEmail {
   subject: string;
   html: string;
   text: string;
+  /** Provider-passthrough headers (e.g. List-Unsubscribe). */
+  headers?: Record<string, string>;
 }
 
 export interface EmailSendResult {
@@ -31,6 +33,7 @@ export async function sendEmail(email: PulseEmail): Promise<EmailSendResult> {
       subject: email.subject,
       html: email.html,
       text: email.text,
+      headers: email.headers,
     }),
   });
   if (!res.ok) return { ok: false, reason: `resend ${res.status}` };

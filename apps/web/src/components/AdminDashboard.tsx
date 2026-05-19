@@ -25,6 +25,8 @@ interface Funnel {
   avgScore: number;
   lowScore: number;
   totalCells: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 const API_ORIGIN = import.meta.env.PUBLIC_API_ORIGIN ?? "http://localhost:4000";
@@ -69,12 +71,14 @@ export default function AdminDashboard() {
       </header>
 
       {funnel ? (
-        <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <section className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <Stat label="Audits run" value={funnel.total} />
           <Stat label="Completed" value={funnel.completed} />
           <Stat label="Avg score" value={funnel.avgScore} />
           <Stat label="High-priority (<40)" value={funnel.lowScore} />
           <Stat label="LLM cells" value={funnel.totalCells} />
+          <Stat label="Tokens in" value={funnel.inputTokens} />
+          <Stat label="Tokens out" value={funnel.outputTokens} />
         </section>
       ) : null}
 

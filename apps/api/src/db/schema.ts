@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   pgEnum,
@@ -70,7 +71,7 @@ export const promptSets = pgTable("prompt_sets", {
 
 export const businesses = pgTable("businesses", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   domain: text("domain").notNull(),
   name: text("name"),
   address: text("address"),
@@ -81,6 +82,11 @@ export const businesses = pgTable("businesses", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   domainIdx: index("businesses_domain_idx").on(t.domain),
+  // Partial unique index: one business row per (user, domain) for
+  // logged-in users; anonymous audits remain free to duplicate.
+  userDomainIdx: uniqueIndex("businesses_user_domain_idx")
+    .on(t.userId, t.domain)
+    .where(sql`${t.userId} is not null`),
 }));
 
 export const audits = pgTable("audits", {
@@ -109,6 +115,8 @@ export const auditResults = pgTable("audit_results", {
   hasContactInfo: boolean("has_contact_info").notNull().default(false),
   caveatFlag: boolean("caveat_flag").notNull().default(false),
   scoreBand: scoreBandEnum("score_band").notNull().default("unavailable"),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   auditIdx: index("audit_results_audit_idx").on(t.auditId),

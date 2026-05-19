@@ -122,6 +122,7 @@ async function sendPulseEmail(job: PulseEmailJob): Promise<void> {
         .limit(1)
     : [];
 
+  const unsubscribeUrl = buildUnsubscribeUrl(job.subscriptionId);
   const { html, text, subject } = buildPulseEmail({
     recipientEmail: job.email,
     businessDomain: job.businessDomain,
@@ -129,10 +130,20 @@ async function sendPulseEmail(job: PulseEmailJob): Promise<void> {
     currentScore: auditRow[0].score,
     previousScore: previous[0]?.score ?? null,
     auditId: job.auditId,
-    unsubscribeUrl: buildUnsubscribeUrl(job.subscriptionId),
+    unsubscribeUrl,
   });
 
-  await sendEmail({ to: job.email, subject, html, text });
+  // RFC 8058 one-click unsubscribe so Gmail/Outlook stop downgrading us.
+  await sendEmail({
+    to: job.email,
+    subject,
+    html,
+    text,
+    headers: {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  });
 }
 
 function addDays(date: Date, days: number): Date {

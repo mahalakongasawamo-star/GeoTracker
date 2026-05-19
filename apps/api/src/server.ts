@@ -42,6 +42,8 @@ export async function buildServer() {
 
   registerUserDecorator(app);
   app.addHook("preHandler", originGuard);
+  // attachUser is no longer a global hook — routes that need req.user pull
+  // it in via per-route loadUser/requireAuth preHandlers (see decorate.ts).
 
   await app.register(healthRoutes);
   await app.register(authRoutes);

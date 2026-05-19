@@ -5,6 +5,10 @@ interface GeminiResponse {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
   }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+  };
 }
 
 const MODEL = "gemini-1.5-flash";
@@ -45,7 +49,13 @@ export function createGeminiAdapter(apiKey: string, model: string = MODEL): LlmA
       if (!text.trim()) {
         return { ok: false, provider: "gemini", reason: "unknown", message: "empty completion" };
       }
-      return { ok: true, provider: "gemini", text, latencyMs: result.latencyMs };
+      const usage = result.data.usageMetadata
+        ? {
+            inputTokens: result.data.usageMetadata.promptTokenCount,
+            outputTokens: result.data.usageMetadata.candidatesTokenCount,
+          }
+        : undefined;
+      return { ok: true, provider: "gemini", text, latencyMs: result.latencyMs, usage };
     },
   };
 }

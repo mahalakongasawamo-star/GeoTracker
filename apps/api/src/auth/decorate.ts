@@ -17,7 +17,13 @@ declare module "fastify" {
   }
 }
 
-export async function attachUser(req: FastifyRequest): Promise<void> {
+export function registerUserDecorator(app: FastifyInstance) {
+  app.decorateRequest("user", null);
+}
+
+// Per-route preHandler: only attach when the route actually needs req.user.
+// Used by /me/*, /admin/*, /audits POST (optional attribution).
+export async function loadUser(req: FastifyRequest): Promise<void> {
   req.user = null;
   const raw = req.cookies?.[SESSION_COOKIE];
   const uid = readUserIdFromCookie(raw);
@@ -30,9 +36,13 @@ export async function attachUser(req: FastifyRequest): Promise<void> {
   req.user = row[0] ?? null;
 }
 
-export function registerUserDecorator(app: FastifyInstance) {
-  app.decorateRequest("user", null);
-  app.addHook("preHandler", attachUser);
+export async function requireAuth(req: FastifyRequest): Promise<void> {
+  await loadUser(req);
+  if (!req.user) {
+    const err = new Error("unauthorized");
+    (err as Error & { statusCode?: number }).statusCode = 401;
+    throw err;
+  }
 }
 
 export function requireUser(req: FastifyRequest): SessionUser {

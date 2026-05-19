@@ -12,8 +12,21 @@ export interface LlmQuery {
 
 export type LlmFailureCode = "rate_limited" | "timeout" | "tos" | "network" | "unknown";
 
+export interface LlmUsage {
+  /** Input/prompt tokens, when the provider reports them. */
+  inputTokens?: number;
+  /** Output/completion tokens, when the provider reports them. */
+  outputTokens?: number;
+}
+
 export type LlmResponse =
-  | { ok: true; provider: LlmProvider; text: string; latencyMs: number }
+  | {
+      ok: true;
+      provider: LlmProvider;
+      text: string;
+      latencyMs: number;
+      usage?: LlmUsage;
+    }
   | { ok: false; provider: LlmProvider; reason: LlmFailureCode; message: string };
 
 export interface LlmAdapter {

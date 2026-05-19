@@ -4,6 +4,11 @@ import type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";
 
 interface OpenAIChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 }
 
 // Shared adapter for OpenAI / Perplexity / xAI Grok — same /chat/completions
@@ -57,7 +62,13 @@ export function createOpenAICompatibleAdapter(cfg: OpenAICompatibleConfig): LlmA
           message: "empty completion",
         };
       }
-      return { ok: true, provider: cfg.provider, text, latencyMs: result.latencyMs };
+      const usage = result.data.usage
+        ? {
+            inputTokens: result.data.usage.prompt_tokens,
+            outputTokens: result.data.usage.completion_tokens,
+          }
+        : undefined;
+      return { ok: true, provider: cfg.provider, text, latencyMs: result.latencyMs, usage };
     },
   };
 }
