@@ -16,3 +16,8 @@ dist/
 .vscode/
 coverage/
 *.tsbuildinfo
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/

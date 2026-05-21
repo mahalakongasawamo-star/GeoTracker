@@ -9,5 +9,5 @@
       "@geotracker/shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "include": ["src/**/*", "src/**/*.astro", "astro.config.mjs"]
+  "include": ["src/**/*", "src/**/*.astro", "astro.config.mjs", "e2e/**/*", "playwright.config.ts"]
 }
