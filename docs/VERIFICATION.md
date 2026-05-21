@@ -11,9 +11,14 @@ should be filed as bugs with the gate name in the title.
 ```powershell
 # From repo root
 pnpm install
-cp .env.example .env   # then fill in DATABASE_URL, REDIS_URL at minimum
 
-# Local stack (Postgres + Redis) — required for everything beyond unit tests
+# dotenv loads .env from the API package's CWD (apps/api), so the env
+# file must live there — a copy at the repo root is NOT picked up.
+cp .env.example apps/api/.env   # then fill in DATABASE_URL, REDIS_URL at minimum
+
+# Local stack (Postgres + Redis) — required for everything beyond unit tests.
+# If Docker isn't available, native Postgres + a Redis-compatible server
+# (e.g. Memurai on Windows) on the default ports work the same.
 pnpm docker:up
 pnpm db:migrate
 pnpm db:seed

@@ -26,6 +26,7 @@ import { startAuditWorker } from "./queue.js";
 import { auditQueue } from "./queue.js";
 import { expandCatchment } from "../geospatial/catchment.js";
 import { resolvePrompts } from "../prompts/resolver.js";
+import { closeProgressPublisher } from "../realtime/progress.js";
 
 const ENABLED = process.env.INTEGRATION === "1";
 const TEST_DOMAIN = "integration-brightsmiles.example";
@@ -85,6 +86,7 @@ describe.skipIf(!ENABLED)("audit pipeline integration (Postgres + Redis + BullMQ
   afterAll(async () => {
     await worker.close();
     await auditQueue.close();
+    await closeProgressPublisher();
     await app.close();
   });
 

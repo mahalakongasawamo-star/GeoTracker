@@ -14,8 +14,12 @@ import { defineConfig } from "@playwright/test";
 
 const WEB_PORT = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 4321);
 const API_PORT = Number(process.env.PLAYWRIGHT_API_PORT ?? 4000);
-const WEB_BASE = `http://127.0.0.1:${WEB_PORT}`;
-const API_BASE = `http://127.0.0.1:${API_PORT}`;
+// Astro dev server binds to IPv6 [::1] only by default on Windows; using
+// "localhost" lets the OS resolver pick whichever family Astro is on, so
+// the webServer health-check and the browser baseURL both work without
+// forcing --host 0.0.0.0 (which would expose the dev server on LAN).
+const WEB_BASE = `http://localhost:${WEB_PORT}`;
+const API_BASE = `http://localhost:${API_PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",

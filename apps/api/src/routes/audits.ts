@@ -186,12 +186,18 @@ export async function auditRoutes(app: FastifyInstance) {
     const unsubscribe = subscribeProgress(id, (event) => {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
       if (event.type === "complete" || event.type === "error") {
-        void unsubscribe().finally(() => reply.raw.end());
+        unsubscribe()
+          .catch(() => {
+            /* connection already torn down — expected during shutdown */
+          })
+          .finally(() => reply.raw.end());
       }
     });
 
     req.raw.on("close", () => {
-      void unsubscribe();
+      unsubscribe().catch(() => {
+        /* expected when the server is closing */
+      });
     });
   });
 }
