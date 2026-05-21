@@ -21,3 +21,6 @@ coverage/
 playwright-report/
 test-results/
 playwright/.cache/
+
+# Vercel build output
+.vercel/
