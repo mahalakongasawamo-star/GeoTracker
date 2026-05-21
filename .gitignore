@@ -24,3 +24,6 @@ playwright/.cache/
 
 # Vercel build output
 .vercel/
+
+# Claude Code local config
+.claude/
