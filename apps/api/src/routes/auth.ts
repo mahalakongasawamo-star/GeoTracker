@@ -137,5 +137,45 @@ export async function authRoutes(app: FastifyInstance) {
   app.get("/auth/providers", async () => ({
     google: Boolean(env.GOOGLE_OAUTH_CLIENT_ID && env.GOOGLE_OAUTH_CLIENT_SECRET),
     linkedin: Boolean(env.LINKEDIN_OAUTH_CLIENT_ID && env.LINKEDIN_OAUTH_CLIENT_SECRET),
+    dev: env.NODE_ENV !== "production",
   }));
+
+  // Dev-only impersonation endpoint so the manual smoke gate (PLAN.md §V
+  // Gate 4) and the Pulse cron gate can be exercised without provisioning
+  // real OAuth credentials. Hard-gated on NODE_ENV — never available in
+  // production, no matter what credentials are passed. Logs every use so
+  // an accidentally-enabled environment is loud.
+  if (env.NODE_ENV !== "production") {
+    app.get<{ Querystring: { email?: string; name?: string } }>(
+      "/auth/dev-login",
+      async (req, reply) => {
+        const email = (req.query.email ?? "").trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return reply.code(400).send({ error: "email_required" });
+        }
+        const name = req.query.name?.trim() || null;
+
+        const existing = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1);
+
+        let userId: string;
+        if (existing[0]) {
+          userId = existing[0].id;
+        } else {
+          const inserted = await db
+            .insert(users)
+            .values({ email, name })
+            .returning({ id: users.id });
+          userId = inserted[0]!.id;
+        }
+
+        app.log.warn({ email, userId }, "DEV LOGIN — never enable in production");
+        reply.setCookie(SESSION_COOKIE, buildSessionCookieValue(userId), SESSION_COOKIE_OPTIONS);
+        return reply.redirect(`${env.WEB_ORIGIN}/dashboard`);
+      },
+    );
+  }
 }
