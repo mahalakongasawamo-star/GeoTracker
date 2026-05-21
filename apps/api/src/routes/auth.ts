@@ -132,20 +132,29 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 
+  // Dev-only impersonation endpoint so the manual smoke gate (PLAN.md §V
+  // Gate 4) and the Pulse cron gate can be exercised without provisioning
+  // real OAuth credentials. Available when:
+  //   - NODE_ENV !== "production" (local dev), OR
+  //   - VERCEL_ENV === "preview" (Vercel preview deploys, where NODE_ENV
+  //     is forced to "production" by the platform).
+  // VERCEL_ENV is set to "production" on real Vercel production deploys,
+  // so the gate stays closed there. SECURITY: preview URLs are public on
+  // Hobby plans; enable Vercel deployment protection if the preview
+  // contains real user data, since this endpoint impersonates any email
+  // without authentication.
+  const devLoginEnabled =
+    env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+
   // Surface which providers are actually configured so the web UI can
   // hide buttons that would 404.
   app.get("/auth/providers", async () => ({
     google: Boolean(env.GOOGLE_OAUTH_CLIENT_ID && env.GOOGLE_OAUTH_CLIENT_SECRET),
     linkedin: Boolean(env.LINKEDIN_OAUTH_CLIENT_ID && env.LINKEDIN_OAUTH_CLIENT_SECRET),
-    dev: env.NODE_ENV !== "production",
+    dev: devLoginEnabled,
   }));
 
-  // Dev-only impersonation endpoint so the manual smoke gate (PLAN.md §V
-  // Gate 4) and the Pulse cron gate can be exercised without provisioning
-  // real OAuth credentials. Hard-gated on NODE_ENV — never available in
-  // production, no matter what credentials are passed. Logs every use so
-  // an accidentally-enabled environment is loud.
-  if (env.NODE_ENV !== "production") {
+  if (devLoginEnabled) {
     app.get<{ Querystring: { email?: string; name?: string } }>(
       "/auth/dev-login",
       async (req, reply) => {
