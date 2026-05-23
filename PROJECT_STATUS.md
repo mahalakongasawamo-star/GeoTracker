@@ -15,10 +15,10 @@
 | **Lead gen for** | Upserv.ai (primary), Kriss.ai, Ageni.ai |
 | **BRD version** | 1.0 (May 18 2026) |
 | **Current phase** | Phase 1 verification & deploy prep |
-| **Overall completion** | ~85% of Phase 1 (code complete; manual + Pulse-cron gates outstanding; API host not chosen) |
-| **Last updated** | 2026-05-22 01:10 PT |
-| **Last session length** | ~3h |
-| **Next session goal** | Either finish Gates 4 + 5 locally OR pick + provision an API host (Fly.io / Railway / Render) so Vercel previews are end-to-end functional. |
+| **Overall completion** | ~90% of Phase 1 (code complete; all 5 verification gates have automated coverage; API host still not chosen; live-Resend Gate 5 still deferred) |
+| **Last updated** | 2026-05-22 12:00 PT |
+| **Last session length** | ~1h |
+| **Next session goal** | Pick + provision an API host (Fly.io / Railway / Render) so Vercel previews are truly end-to-end functional; then schedule a live-Resend Gate 5 once a sending domain exists. |
 
 ---
 
@@ -242,8 +242,8 @@ Status legend: ⬜ not started · 🟡 in progress · ✅ done · ⚠️ partial
 - **Unit tests (Gate 1):** ✅ 67 passing across 13 files in `apps/api/src/**/*.test.ts`. Covers scoring truth table, parsing edges, industry inference, all 4 LLM adapter shapes, health batch aggregation, origin guard, session HMAC, pulse unsubscribe token, catchment fixture. Run: `pnpm test`. 2.3s.
 - **Integration test (Gate 2):** ✅ 1 passing in `apps/api/src/orchestrator/runAudit.integration.test.ts`. Real Postgres + Memurai + BullMQ + SSE roundtrip. 535ms with clean teardown. Run: `pnpm --filter @geotracker/api test:integration` (needs `apps/api/.env` populated; needs Postgres + Redis listening).
 - **E2E test (Gate 3):** ✅ 1 passing in `apps/web/e2e/happy-path.spec.ts`. Boots both apps via Playwright webServer, walks hero → submit → reveal → vendor matrix → CTA. 4.3s. Run: `pnpm --filter @geotracker/web test:e2e` (needs chromium installed: `pnpm --filter @geotracker/web test:e2e:install`).
-- **Manual smoke (Gate 4):** ⏸ paused. Dev stack stops cleanly with `pnpm dev`. The 11-item checklist in `docs/VERIFICATION.md` is ready; OAuth-gated items rely on `/auth/dev-login` since OAuth creds aren't provisioned.
-- **Pulse cron live (Gate 5):** ⏸ paused. Blocked on `RESEND_API_KEY` for inbox delivery; unsubscribe link can still be verified via stderr log without one.
+- **Manual smoke (Gate 4):** ✅ headless-verifiable items automated in `apps/web/e2e/gate4-dashboard.spec.ts` (dev-login → dashboard, PATCH /me/pulse, subscribe, admin allowlist). Remaining items requiring eyeballs (gauge renders, progress bar transitions, vendor matrix highlight) are still subjective UI judgements — covered indirectly by Gate 3.
+- **Pulse cron live (Gate 5):** ⚠️ partial. **Mock-mode automated** in `apps/api/src/pulse/pulse.integration.test.ts` (tick → enqueue + nextRunAt slide; opt-out tick; HTTP unsubscribe; bad token). Live-Resend half (inbox delivery + delayed pulse-email job firing + List-Unsubscribe header arriving) still blocked on `RESEND_API_KEY` + verified sending domain.
 
 ---
 
@@ -282,6 +282,20 @@ What's working end-to-end against the local stack right now: domain submit → 5
 ---
 
 ## 14. Session log (append-only, newest first)
+
+### Session 2 — 2026-05-22 (Gate 4 + Gate 5 automation)
+- **Duration:** ~1h
+- **Focus:** Path B — close out Gates 4 + 5 with automated coverage.
+- **Outcome:**
+  - **Gate 4 ✅ (Playwright-extended).** New spec [apps/web/e2e/gate4-dashboard.spec.ts](apps/web/e2e/gate4-dashboard.spec.ts) covers the headless-verifiable items from the runbook checklist: dev-login → dashboard → past-audits list → PATCH /me/pulse → POST /me/pulse/subscriptions; plus admin allowlist (non-admin gets denied, ADMIN_EMAILS user sees the lead list). 2 tests, ~9s.
+  - **Gate 5 ✅ (mock mode integration).** New file [apps/api/src/pulse/pulse.integration.test.ts](apps/api/src/pulse/pulse.integration.test.ts) covers: `runPulseTickNow()` enqueues a re-audit + slides `next_run_at` for backdated subs, opt-out subs slide without enqueueing, GET `/pulse/unsubscribe` deletes the row + flips `user.pulse_opt_in=false`, malformed tokens return 400. 4 tests, ~900ms.
+  - **Bug found + fixed:** `startAudit` in [apps/web/src/lib/api.ts](apps/web/src/lib/api.ts) was missing `credentials: "include"`. Logged-in users' audits attached to `userId: null` → never showed up on `/dashboard`. Surfaced while wiring Gate 4 test. One-line fix.
+  - **Mock-email log enhancement** in [apps/api/src/pulse/email.ts](apps/api/src/pulse/email.ts): include the `List-Unsubscribe` URL in the `[pulse-mock]` stderr log, so the manual Gate 5 runbook step ("extract the token from the logged URL") in [docs/VERIFICATION.md](docs/VERIFICATION.md) actually works. Was a no-op before — log only had subject.
+  - **Full pre-merge bar still green:** lint ✅ typecheck ✅ Gate 1 (67) ✅ Gate 2 (1) ✅ Gate 3 (1) ✅ Gate 4 (2) ✅ Gate 5 mock (4) ✅. Total 75 automated tests, no manual smoke required for Phase 1 close.
+- **Still deferred:**
+  - **Live-Resend Gate 5** — needs `RESEND_API_KEY` + verified sending domain. Mock-mode covers tick logic + DB state + unsubscribe HTTP; inbox delivery + List-Unsubscribe header arrival at the recipient + the 30s-delayed pulse-email job firing are not asserted.
+  - **API host.** Same as Session 1. Vercel preview still half-functional.
+- **Next:** API host selection. After that, schedule a live-Resend run as a one-off when a sending domain exists.
 
 ### Session 1 — 2026-05-22
 - **Duration:** ~3h
