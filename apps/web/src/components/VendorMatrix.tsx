@@ -1,20 +1,38 @@
 import { VENDOR_MATRIX, VENDOR_HEADER } from "@geotracker/shared";
+import { track } from "../lib/analytics";
 
 export default function VendorMatrix() {
+  const onVendor = (vendor: string) => () => track("vendor_clicked", { vendor });
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-slate-50">
             <th className="text-left px-4 py-3 font-semibold text-slate-700">Feature</th>
-            <th className="text-left px-4 py-3 font-semibold text-brand-700 bg-brand-50">
+            <th
+              onClick={onVendor("upserv")}
+              className="text-left px-4 py-3 font-semibold text-brand-700 bg-brand-50 cursor-pointer"
+            >
               {VENDOR_HEADER.upserv}
             </th>
-            <th className="text-left px-4 py-3 font-semibold text-slate-700">
+            <th
+              onClick={onVendor("wix-squarespace")}
+              className="text-left px-4 py-3 font-semibold text-slate-700 cursor-pointer"
+            >
               {VENDOR_HEADER["wix-squarespace"]}
             </th>
-            <th className="text-left px-4 py-3 font-semibold text-slate-700">{VENDOR_HEADER.godaddy}</th>
-            <th className="text-left px-4 py-3 font-semibold text-slate-700">{VENDOR_HEADER.wordpress}</th>
+            <th
+              onClick={onVendor("godaddy")}
+              className="text-left px-4 py-3 font-semibold text-slate-700 cursor-pointer"
+            >
+              {VENDOR_HEADER.godaddy}
+            </th>
+            <th
+              onClick={onVendor("wordpress")}
+              className="text-left px-4 py-3 font-semibold text-slate-700 cursor-pointer"
+            >
+              {VENDOR_HEADER.wordpress}
+            </th>
           </tr>
         </thead>
         <tbody>

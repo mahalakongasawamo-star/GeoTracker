@@ -1,3 +1,5 @@
+import { track } from "../lib/analytics";
+
 export default function SolutionPitch() {
   return (
     <section className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-500 text-white px-8 py-12">
@@ -10,6 +12,7 @@ export default function SolutionPitch() {
       <div className="mt-8 flex flex-wrap gap-3">
         <a
           href="#book"
+          onClick={() => track("consultation_booked", { source: "post_audit_cta" })}
           className="bg-white text-brand-700 font-semibold px-5 py-3 rounded-xl hover:bg-slate-100 transition"
         >
           Book a free consultation

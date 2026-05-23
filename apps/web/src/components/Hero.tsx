@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { INDUSTRIES } from "@geotracker/shared";
 import { startAudit } from "../lib/api";
+import { track } from "../lib/analytics";
 
 export default function Hero() {
   const [domain, setDomain] = useState("");
@@ -18,6 +19,11 @@ export default function Hero() {
       return;
     }
     setSubmitting(true);
+    track("audit_started", {
+      domain: domain.trim(),
+      industrySlug: industrySlug || null,
+      hasCity: Boolean(city.trim()),
+    });
     try {
       const { id } = await startAudit({
         domain: domain.trim(),

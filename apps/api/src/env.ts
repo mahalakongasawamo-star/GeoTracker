@@ -21,7 +21,6 @@ const schema = z.object({
   XAI_API_KEY: z.string().optional(),
 
   GOOGLE_MAPS_API_KEY: z.string().optional(),
-  MAPBOX_API_KEY: z.string().optional(),
 
   SESSION_SECRET: z.string().min(16).default("dev-only-not-secure-replace-me-please"),
   GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),

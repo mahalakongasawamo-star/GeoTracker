@@ -15,5 +15,9 @@ const { title = "GeoTracker — AI Visibility Audit" } = Astro.props;
   </head>
   <body class="min-h-screen">
     <slot />
+    <script>
+      import { initAnalytics } from "../lib/analytics";
+      initAnalytics();
+    </script>
   </body>
 </html>

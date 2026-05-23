@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LLM_DISPLAY, LLM_PROVIDERS, type AuditDetail, type LlmProvider, type ProgressEvent } from "@geotracker/shared";
 import { getAudit, streamAudit } from "../lib/api";
+import { track } from "../lib/analytics";
 import ScoreGauge from "./ScoreGauge";
 import LLMGrid from "./LLMGrid";
 import BlindSpots from "./BlindSpots";
@@ -51,6 +52,7 @@ export default function AuditRunner({ auditId }: Props) {
         finalized = true;
         void getAudit(auditId).then((d) => {
           setDetail(d);
+          track("audit_completed", { auditId, score: d.score, status: d.status });
           setStatuses(
             LLM_PROVIDERS.reduce(
               (acc, p) => ({ ...acc, [p]: "done" as LlmStatus }),

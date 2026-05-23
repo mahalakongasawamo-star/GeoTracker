@@ -10,12 +10,12 @@ GeoTracker is a greenfield AI visibility audit web app (per BRD v1.0, May 18 202
 
 ## Stack (per BRD §7.4)
 
-- **Frontend:** Astro 5 + Tailwind + shadcn/ui, deployed to Vercel.
+- **Frontend:** Astro 5 + React + Tailwind (hand-styled; shadcn/ui not adopted), deployed to Vercel via `@astrojs/vercel` SSR adapter.
 - **Backend:** Node.js + Fastify (async-first orchestrator).
 - **Queue:** Redis + BullMQ for LLM job orchestration.
 - **DB:** Postgres (users, audits, lookup tables); Redis for caching recent audits.
-- **Geospatial:** Google Maps Geocoding + Places API (Mapbox fallback adapter).
-- **Auth:** OAuth via Google + LinkedIn (Auth.js / Lucia).
+- **Geospatial:** Google Maps Geocoding + Places API with curated 5-city Texas fixture as offline fallback (Mapbox never integrated; see SOW v1.1).
+- **Auth:** OAuth via Google + LinkedIn with HMAC-signed session cookies (custom; not Auth.js / Lucia / JWT).
 - **Email:** Resend (Postmark adapter ready) for Pulse Reports.
 - **Analytics:** PostHog for conversion tracking.
 - **Monorepo:** pnpm workspaces.

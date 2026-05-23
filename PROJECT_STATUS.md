@@ -14,11 +14,12 @@
 | **Parent** | Iozera |
 | **Lead gen for** | Upserv.ai (primary), Kriss.ai, Ageni.ai |
 | **BRD version** | 1.0 (May 18 2026) |
-| **Current phase** | Phase 1 verification & deploy prep |
-| **Overall completion** | ~90% of Phase 1 (code complete; all 5 verification gates have automated coverage; API host still not chosen; live-Resend Gate 5 still deferred) |
-| **Last updated** | 2026-05-22 12:00 PT |
+| **Active SOW** | v1.1 (May 23 2026) — `GeoTracker_SOW_v1_1 (1).pdf` |
+| **Current phase** | Phase 1 deploy prep — AC-7 + AC-10 closed in code; AC-1 + deploy blocked on Allan/Tim |
+| **Overall completion** | ~93% of Phase 1. Of the 3 ship-ready ACs flagged by SOW v1.1 §5, **AC-7 (hard boot guard) and AC-10 (PostHog 4 events) are now built**. AC-1 (live latency) remains blocked on real-LLM flip + API host. |
+| **Last updated** | 2026-05-23 PT |
 | **Last session length** | ~1h |
-| **Next session goal** | Pick + provision an API host (Fly.io / Railway / Render) so Vercel previews are truly end-to-end functional; then schedule a live-Resend Gate 5 once a sending domain exists. |
+| **Next session goal** | Allan: pick API host (SOW v1.1 §11 Q1, recommends Railway) + confirm SOW v1.1 sign-off path. Tim: real-LLM keys + token-budget sign-off so M9 can flip. |
 
 ---
 

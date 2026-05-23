@@ -132,19 +132,31 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 
-  // Dev-only impersonation endpoint so the manual smoke gate (PLAN.md §V
-  // Gate 4) and the Pulse cron gate can be exercised without provisioning
-  // real OAuth credentials. Available when:
-  //   - NODE_ENV !== "production" (local dev), OR
-  //   - VERCEL_ENV === "preview" (Vercel preview deploys, where NODE_ENV
-  //     is forced to "production" by the platform).
-  // VERCEL_ENV is set to "production" on real Vercel production deploys,
-  // so the gate stays closed there. SECURITY: preview URLs are public on
-  // Hobby plans; enable Vercel deployment protection if the preview
-  // contains real user data, since this endpoint impersonates any email
-  // without authentication.
-  const devLoginEnabled =
-    env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+  // Dev-only impersonation endpoint per SOW v1.1 §5 AC-7. Enabled in
+  // non-production by default. To enable in production (emergency
+  // support only) set ALLOW_DEV_LOGIN=true explicitly — every request
+  // is logged and the override is announced at boot.
+  //
+  // The v1.0 escape that opened the gate on VERCEL_ENV=preview is
+  // removed. Previews now rely on Vercel Deployment Protection or an
+  // explicit ALLOW_DEV_LOGIN=true (SOW v1.1 §8.2 step 5).
+  const isProduction = env.NODE_ENV === "production";
+  const allowDevLoginOverride = process.env.ALLOW_DEV_LOGIN === "true";
+  const devLoginEnabled = !isProduction || allowDevLoginOverride;
+
+  // Hard boot guard. If devLoginEnabled ever ends up true in production
+  // without the override, the logic above has been broken — blow up the
+  // boot rather than silently expose the endpoint.
+  if (isProduction && devLoginEnabled && !allowDevLoginOverride) {
+    throw new Error(
+      "BOOT GUARD: /auth/dev-login cannot be enabled in production without ALLOW_DEV_LOGIN=true",
+    );
+  }
+  if (isProduction && allowDevLoginOverride) {
+    app.log.warn(
+      "DEV LOGIN ENABLED IN PRODUCTION via ALLOW_DEV_LOGIN=true — every use logged at warn",
+    );
+  }
 
   // Surface which providers are actually configured so the web UI can
   // hide buttons that would 404.
