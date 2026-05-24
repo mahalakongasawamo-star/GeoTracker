@@ -58,6 +58,7 @@ async function attemptOnce<T>(
         failure: {
           ok: false,
           provider: input.provider,
+          source: "real",
           reason: mapStatusToFailure(res.status),
           message: `${input.provider} ${res.status}`,
         },
@@ -75,6 +76,7 @@ async function attemptOnce<T>(
       failure: {
         ok: false,
         provider: input.provider,
+        source: "real",
         reason: aborted ? "timeout" : "network",
         message: err instanceof Error ? err.message : "network error",
       },

@@ -10,6 +10,13 @@ export interface AuditRequestInput {
   state?: string;
 }
 
+// Tagged on each row so the UI can mark mock-fallback cells when
+// LLM_USE_REAL_ADAPTERS=true but a specific provider has no API key.
+//   "real"          — real LLM API was queried
+//   "mock"          — global mock mode
+//   "mock_fallback" — flag on, provider had no key; sample data was used
+export type AuditResultSource = "real" | "mock" | "mock_fallback";
+
 export interface AuditResultRow {
   id: string;
   llm: LlmProvider;
@@ -20,6 +27,8 @@ export interface AuditResultRow {
   hasContactInfo: boolean;
   caveatFlag: boolean;
   scoreBand: ScoreBand;
+  /** Nullable for legacy rows written before the column existed. */
+  source: AuditResultSource | null;
   responseExcerpt?: string;
 }
 

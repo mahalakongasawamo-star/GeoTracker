@@ -115,6 +115,10 @@ export const auditResults = pgTable("audit_results", {
   hasContactInfo: boolean("has_contact_info").notNull().default(false),
   caveatFlag: boolean("caveat_flag").notNull().default(false),
   scoreBand: scoreBandEnum("score_band").notNull().default("unavailable"),
+  // "real" | "mock" | "mock_fallback". Nullable for backward-compat with
+  // rows written before this column existed. Plain text (not an enum) so
+  // adding a new source value later doesn't need a migration.
+  source: text("source"),
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

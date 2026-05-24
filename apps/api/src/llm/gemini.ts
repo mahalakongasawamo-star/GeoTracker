@@ -47,7 +47,7 @@ export function createGeminiAdapter(apiKey: string, model: string = MODEL): LlmA
         .map((p) => p.text ?? "")
         .join("\n");
       if (!text.trim()) {
-        return { ok: false, provider: "gemini", reason: "unknown", message: "empty completion" };
+        return { ok: false, provider: "gemini", source: "real", reason: "unknown", message: "empty completion" };
       }
       const usage = result.data.usageMetadata
         ? {
@@ -55,7 +55,7 @@ export function createGeminiAdapter(apiKey: string, model: string = MODEL): LlmA
             outputTokens: result.data.usageMetadata.candidatesTokenCount,
           }
         : undefined;
-      return { ok: true, provider: "gemini", text, latencyMs: result.latencyMs, usage };
+      return { ok: true, provider: "gemini", source: "real", text, latencyMs: result.latencyMs, usage };
     },
   };
 }

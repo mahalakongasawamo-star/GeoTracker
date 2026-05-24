@@ -76,6 +76,7 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
           hasContactInfo: parsed.hasContactInfo,
           caveatFlag: parsed.caveatFlag,
           scoreBand: band,
+          source: response.source,
           inputTokens: response.ok ? response.usage?.inputTokens ?? null : null,
           outputTokens: response.ok ? response.usage?.outputTokens ?? null : null,
         });

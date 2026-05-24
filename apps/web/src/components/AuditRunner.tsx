@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LLM_DISPLAY, LLM_PROVIDERS, type AuditDetail, type LlmProvider, type ProgressEvent } from "@geotracker/shared";
 import { getAudit, streamAudit } from "../lib/api";
 import { track } from "../lib/analytics";
@@ -21,6 +21,28 @@ const EDUCATIONAL_TIPS = [
   "ChatGPT, Perplexity, and Gemini are now used for local recommendations.",
   "AI answers change daily. Most businesses have no idea where they stand.",
 ];
+
+function SampleDataBanner({ detail }: { detail: AuditDetail }) {
+  const sampleProviders = useMemo(() => {
+    const set = new Set<LlmProvider>();
+    for (const p of LLM_PROVIDERS) {
+      const rows = detail.rows.filter((r) => r.llm === p);
+      if (rows.length > 0 && rows.every((r) => r.source === "mock_fallback")) set.add(p);
+    }
+    return [...set];
+  }, [detail.rows]);
+
+  if (sampleProviders.length === 0) return null;
+
+  const names = sampleProviders.map((p) => LLM_DISPLAY[p]).join(", ");
+  return (
+    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <strong>Sample data:</strong> {names} {sampleProviders.length === 1 ? "is" : "are"} not yet
+      connected to a live API. Those cells use deterministic sample responses so the audit can still
+      complete; treat them as illustrative, not actual coverage.
+    </div>
+  );
+}
 
 export default function AuditRunner({ auditId }: Props) {
   const [ratio, setRatio] = useState(0);
@@ -98,6 +120,8 @@ export default function AuditRunner({ auditId }: Props) {
             {detail.business.industrySlug ? ` · ${detail.business.industrySlug}` : ""}
           </p>
         </header>
+
+        <SampleDataBanner detail={detail} />
 
         <section className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
           <ScoreGauge score={detail.score} />

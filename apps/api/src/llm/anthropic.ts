@@ -42,6 +42,7 @@ export function createAnthropicAdapter(apiKey: string, model = "claude-haiku-4-5
         return {
           ok: false,
           provider: "claude",
+          source: "real",
           reason: "unknown",
           message: "empty completion",
         };
@@ -52,7 +53,7 @@ export function createAnthropicAdapter(apiKey: string, model = "claude-haiku-4-5
             outputTokens: result.data.usage.output_tokens,
           }
         : undefined;
-      return { ok: true, provider: "claude", text, latencyMs: result.latencyMs, usage };
+      return { ok: true, provider: "claude", source: "real", text, latencyMs: result.latencyMs, usage };
     },
   };
 }

@@ -58,6 +58,7 @@ export function createOpenAICompatibleAdapter(cfg: OpenAICompatibleConfig): LlmA
         return {
           ok: false,
           provider: cfg.provider,
+          source: "real",
           reason: "unknown",
           message: "empty completion",
         };
@@ -68,7 +69,7 @@ export function createOpenAICompatibleAdapter(cfg: OpenAICompatibleConfig): LlmA
             outputTokens: result.data.usage.completion_tokens,
           }
         : undefined;
-      return { ok: true, provider: cfg.provider, text, latencyMs: result.latencyMs, usage };
+      return { ok: true, provider: cfg.provider, source: "real", text, latencyMs: result.latencyMs, usage };
     },
   };
 }

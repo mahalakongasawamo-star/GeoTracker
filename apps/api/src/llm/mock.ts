@@ -1,5 +1,5 @@
 import type { LlmProvider } from "@geotracker/shared";
-import type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";
+import type { LlmAdapter, LlmQuery, LlmResponse, LlmResponseSource } from "./types.js";
 
 // Deterministic fixture adapter. Picks a behavior per (provider, domain)
 // so the same domain always yields a reproducible reveal dashboard for
@@ -85,8 +85,12 @@ function buildText(input: LlmQuery, behavior: Behavior): string {
   }
 }
 
+// "mock" — global mock mode (flag off)
+// "mock_fallback" — flag on but this provider has no API key
+type MockSource = Extract<LlmResponseSource, "mock" | "mock_fallback">;
+
 class MockAdapter implements LlmAdapter {
-  constructor(public readonly provider: LlmProvider) {}
+  constructor(public readonly provider: LlmProvider, public readonly source: MockSource) {}
 
   async query(input: LlmQuery): Promise<LlmResponse> {
     const behavior = pickBehavior(this.provider, input.domain);
@@ -100,6 +104,7 @@ class MockAdapter implements LlmAdapter {
       return {
         ok: false,
         provider: this.provider,
+        source: this.source,
         reason: "timeout",
         message: "mock: simulated unavailability",
       };
@@ -107,12 +112,13 @@ class MockAdapter implements LlmAdapter {
     return {
       ok: true,
       provider: this.provider,
+      source: this.source,
       text: buildText(input, behavior),
       latencyMs,
     };
   }
 }
 
-export function createMockAdapter(provider: LlmProvider): LlmAdapter {
-  return new MockAdapter(provider);
+export function createMockAdapter(provider: LlmProvider, source: MockSource = "mock"): LlmAdapter {
+  return new MockAdapter(provider, source);
 }

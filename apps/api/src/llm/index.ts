@@ -51,8 +51,11 @@ export function getAdapter(provider: LlmProvider): LlmAdapter {
   if (env.LLM_USE_REAL_ADAPTERS) {
     const real = realAdapter(provider);
     if (real) return real;
+    // Flag is on but this provider has no key — tag the mock as a fallback
+    // so the audit response can flag it in the UI ("Sample data").
+    return createMockAdapter(provider, "mock_fallback");
   }
-  return createMockAdapter(provider);
+  return createMockAdapter(provider, "mock");
 }
 
 export function getAllAdapters(): LlmAdapter[] {

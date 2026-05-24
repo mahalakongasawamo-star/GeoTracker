@@ -213,6 +213,7 @@ export async function auditRoutes(app: FastifyInstance) {
         hasContactInfo: r.hasContactInfo,
         caveatFlag: r.caveatFlag,
         scoreBand: r.scoreBand,
+        source: (r.source as "real" | "mock" | "mock_fallback" | null) ?? null,
         responseExcerpt: r.responseRaw ? r.responseRaw.slice(0, 280) : undefined,
       })),
       competitorMentions,
