@@ -1,12 +1,19 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { INDUSTRIES, type AuditDetail, type AuditSummary } from "@geotracker/shared";
+import {
+  INDUSTRIES,
+  type AuditDetail,
+  type AuditSummary,
+  type CompetitorMention,
+  type LlmProvider,
+} from "@geotracker/shared";
 import { db } from "../db/client.js";
 import { audits, auditResults, businesses, industries } from "../db/schema.js";
 import { loadUser } from "../auth/decorate.js";
 import { auditQueue } from "../orchestrator/queue.js";
 import { inferIndustrySlug } from "../prompts/inferIndustry.js";
+import { extractCompetitors } from "../parsing/extractCompetitors.js";
 import { subscribeProgress } from "../realtime/progress.js";
 
 const createSchema = z.object({
@@ -155,6 +162,30 @@ export async function auditRoutes(app: FastifyInstance) {
       },
     };
 
+    // Aggregate competitor mentions across raw LLM responses. Count the
+    // number of distinct LLM providers (not total occurrences) that
+    // surfaced each competitor, then take the top by reach.
+    const perCompetitorLlms = new Map<string, { name: string; llms: Set<LlmProvider> }>();
+    for (const r of rows) {
+      if (!r.responseRaw) continue;
+      const names = extractCompetitors({
+        text: r.responseRaw,
+        targetName: a.name ?? undefined,
+        targetDomain: a.domain,
+        industrySlug: a.industrySlug ?? undefined,
+      });
+      for (const name of names) {
+        const key = name.toLowerCase();
+        const entry = perCompetitorLlms.get(key) ?? { name, llms: new Set<LlmProvider>() };
+        entry.llms.add(r.llm);
+        perCompetitorLlms.set(key, entry);
+      }
+    }
+    const competitorMentions: CompetitorMention[] = [...perCompetitorLlms.values()]
+      .map((e) => ({ name: e.name, llmCount: e.llms.size }))
+      .sort((x, y) => y.llmCount - x.llmCount || x.name.localeCompare(y.name))
+      .slice(0, 6);
+
     const detail: AuditDetail = {
       ...summary,
       rows: rows.map((r) => ({
@@ -169,6 +200,7 @@ export async function auditRoutes(app: FastifyInstance) {
         scoreBand: r.scoreBand,
         responseExcerpt: r.responseRaw ? r.responseRaw.slice(0, 280) : undefined,
       })),
+      competitorMentions,
     };
 
     return reply.send(detail);

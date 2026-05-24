@@ -39,8 +39,16 @@ export interface AuditSummary {
   };
 }
 
+export interface CompetitorMention {
+  /** Display name of the competing business as detected in LLM responses. */
+  name: string;
+  /** How many distinct LLM providers (out of LLM_PROVIDERS.length) mentioned this competitor. */
+  llmCount: number;
+}
+
 export interface AuditDetail extends AuditSummary {
   rows: AuditResultRow[];
+  competitorMentions: CompetitorMention[];
 }
 
 export interface ProgressEvent {

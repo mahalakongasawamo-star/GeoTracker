@@ -5,6 +5,7 @@ import { track } from "../lib/analytics";
 import ScoreGauge from "./ScoreGauge";
 import LLMGrid from "./LLMGrid";
 import BlindSpots from "./BlindSpots";
+import CompetitorMentions from "./CompetitorMentions";
 import VendorMatrix from "./VendorMatrix";
 import SolutionPitch from "./SolutionPitch";
 
@@ -118,6 +119,21 @@ export default function AuditRunner({ auditId }: Props) {
             <BlindSpots rows={detail.rows} />
           </div>
         </section>
+
+        {detail.competitorMentions.length > 0 && (
+          <section>
+            <p className="text-brand-600 text-xs font-semibold uppercase tracking-wide">
+              Who's winning instead
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900">Competitor Mentions</h2>
+            <p className="mt-1 text-slate-600 text-sm">
+              These businesses appeared in AI recommendations for your category.
+            </p>
+            <div className="mt-4">
+              <CompetitorMentions competitors={detail.competitorMentions} />
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="text-xl font-semibold text-slate-900">Who can fix this?</h2>
