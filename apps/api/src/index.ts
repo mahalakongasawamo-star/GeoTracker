@@ -1,4 +1,5 @@
 import { env } from "./env.js";
+import { getAdapterReport } from "./llm/index.js";
 import { startAuditWorker } from "./orchestrator/queue.js";
 import { startPulseScheduler } from "./pulse/scheduler.js";
 import { buildServer } from "./server.js";
@@ -19,10 +20,14 @@ async function main() {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
   await app.listen({ port: env.API_PORT, host: "0.0.0.0" });
-  app.log.info(
-    { port: env.API_PORT, llmAdapters: env.LLM_USE_REAL_ADAPTERS ? "real" : "mock" },
-    "api up",
-  );
+  const report = getAdapterReport();
+  app.log.info({ port: env.API_PORT, ...report }, "api up");
+  if (report.realAdaptersEnabled && report.mockFallback.length > 0) {
+    app.log.warn(
+      { mockFallback: report.mockFallback },
+      "LLM_USE_REAL_ADAPTERS=true but some providers have no API key and will serve mock data",
+    );
+  }
 }
 
 main().catch((err) => {

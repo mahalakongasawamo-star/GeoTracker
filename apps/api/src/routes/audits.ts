@@ -35,9 +35,11 @@ export async function auditRoutes(app: FastifyInstance) {
       // loadUser is optional here — audits can be anonymous.
       preHandler: loadUser,
       config: {
-        // Per-IP rate limit. Sales reps share an IP behind corp NAT, so this
-        // is generous; tune with caller telemetry once we have it.
-        rateLimit: { max: 30, timeWindow: "1 minute" },
+        // Per-IP rate limit. Tight because each audit triggers up to 240
+        // real LLM calls; a single abusive IP can spend $30+ per minute at
+        // the previous 30/min ceiling. Sales reps behind corp NAT will need
+        // an exemption via API key once we have one.
+        rateLimit: { max: 3, timeWindow: "1 minute" },
       },
     },
     async (req, reply) => {

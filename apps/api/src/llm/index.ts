@@ -59,4 +59,26 @@ export function getAllAdapters(): LlmAdapter[] {
   return LLM_PROVIDERS.map(getAdapter);
 }
 
+// Operator-facing summary: for each provider, is the live audit pipeline
+// using the real API or silently falling back to mock? Called once at boot
+// so the Railway logs make the coverage state obvious instead of hiding it
+// in adapter behavior.
+export function getAdapterReport(): {
+  realAdaptersEnabled: boolean;
+  real: LlmProvider[];
+  mockFallback: LlmProvider[];
+  mock: LlmProvider[];
+} {
+  if (!env.LLM_USE_REAL_ADAPTERS) {
+    return { realAdaptersEnabled: false, real: [], mockFallback: [], mock: [...LLM_PROVIDERS] };
+  }
+  const real: LlmProvider[] = [];
+  const mockFallback: LlmProvider[] = [];
+  for (const p of LLM_PROVIDERS) {
+    if (realAdapter(p)) real.push(p);
+    else mockFallback.push(p);
+  }
+  return { realAdaptersEnabled: true, real, mockFallback, mock: [] };
+}
+
 export type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";
