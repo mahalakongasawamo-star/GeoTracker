@@ -15,11 +15,11 @@
 | **Lead gen for** | Upserv.ai (primary), Kriss.ai, Ageni.ai |
 | **BRD version** | 1.0 (May 18 2026) |
 | **Active SOW** | v1.1 (May 23 2026) — `GeoTracker_SOW_v1_1 (1).pdf` |
-| **Current phase** | Phase 1 deploy prep — AC-7 + AC-10 closed in code; AC-1 + deploy blocked on Allan/Tim |
-| **Overall completion** | ~93% of Phase 1. Of the 3 ship-ready ACs flagged by SOW v1.1 §5, **AC-7 (hard boot guard) and AC-10 (PostHog 4 events) are now built**. AC-1 (live latency) remains blocked on real-LLM flip + API host. |
-| **Last updated** | 2026-05-23 PT |
-| **Last session length** | ~1h |
-| **Next session goal** | Allan: pick API host (SOW v1.1 §11 Q1, recommends Railway) + confirm SOW v1.1 sign-off path. Tim: real-LLM keys + token-budget sign-off so M9 can flip. |
+| **Current phase** | Phase 1 deploy live — Railway API + Vercel web up; AC-1 safety net committed locally, waiting on keys + flag flip on Railway |
+| **Overall completion** | ~97% of Phase 1. Railway + Vercel are end-to-end against mock adapters. AC-7 + AC-10 + AC-1 pre-flight (rate limit, daily cap, source-tagging) all closed in code. AC-1 itself ships when the three real-LLM keys land on Railway and `LLM_USE_REAL_ADAPTERS` flips. |
+| **Last updated** | 2026-05-25 PT |
+| **Last session length** | ~3h (Session 3, split across two days) |
+| **Next session goal** | Allan: set `OPENAI_API_KEY` + `ANTHROPIC_API_KEY` + `GOOGLE_GEMINI_API_KEY` on Railway, flip `LLM_USE_REAL_ADAPTERS=true`, smoke-test. Then: provision real Google + LinkedIn OAuth (decide dev-login lifecycle), rotate the three exposed secrets before public launch. |
 
 ---
 
@@ -283,6 +283,35 @@ What's working end-to-end against the local stack right now: domain submit → 5
 ---
 
 ## 14. Session log (append-only, newest first)
+
+### Session 3 — 2026-05-23 / 2026-05-24 (SOW v1.1 close + Railway/Vercel deploy)
+- **Duration:** ~2h across two days.
+- **Focus:** Audit SOW v1.0 against reality, close the two ship-ready ACs from SOW v1.1, get the API onto a real host, ship to Vercel end-to-end.
+- **Outcome:**
+  - **SOW v1.0 alignment audit** ([SOW_ALIGNMENT_v1.0.md](SOW_ALIGNMENT_v1.0.md), commit `7493fde`) — section-by-section pass. 6/14 align cleanly, 9 need revision, 2 are factually wrong (SOW v1.0 claimed JWT auth + Mapbox geospatial; actual code is HMAC sessions + Texas-fixture fallback). Drove the SOW v1.1 revisions.
+  - **AC-7: hard boot guard on /auth/dev-login** ([apps/api/src/routes/auth.ts](apps/api/src/routes/auth.ts), commit `a8cbcac`) — production requires explicit `ALLOW_DEV_LOGIN=true` (logged at WARN). The v1.0 `VERCEL_ENV === "preview"` escape is **removed**; previews now rely on Vercel Deployment Protection or the override. Defensive throw at boot prevents the route from ever registering in prod without the override.
+  - **AC-10: PostHog client SDK + 4 conversion events** ([apps/web/src/lib/analytics.ts](apps/web/src/lib/analytics.ts), commit `a8cbcac`) — `posthog-js@1.376` added; `analytics.ts` wraps init + capture with a no-op fallback when `PUBLIC_POSTHOG_KEY` is unset. Events fire from Hero (`audit_started`), AuditRunner (`audit_completed`), VendorMatrix column headers (`vendor_clicked`), and SolutionPitch CTA (`consultation_booked`). PLAN.md §V Gate 3's CTA-capture assertion is no longer a no-op.
+  - **Mapbox drop** (commit `a8cbcac`) — `MAPBOX_API_KEY` removed from env schema and `.env.example`. The 5-city Texas fixture is the documented offline fallback (SOW v1.1 §6.2 Q7).
+  - **Railway API host provisioned** — project `responsible-miracle`, service `api`, with Railway-managed Postgres + Redis in the same project. Live at `https://api-production-8a32.up.railway.app`.
+  - **Production tsx runtime fix** ([apps/api/package.json](apps/api/package.json), commit `38f8cee`) — compiled `node dist/...` crashed at boot with `ERR_UNKNOWN_FILE_EXTENSION` because `@geotracker/shared`'s package.json points main/exports at raw `.ts` files. Switched the prod start script to `tsx` (same as dev + vitest). Avoids a workspace refactor; ~2 lines.
+  - **Vercel web deploy live** at `https://geo-tracker-web-dusky.vercel.app` (project `geo-tracker-web`). Re-deployed via empty commit `99f331f` after env vars settled.
+  - **CORS unblock** — Railway `WEB_ORIGIN` was a stale placeholder, causing browser "Failed to fetch" on `POST /audits`. Updated to the Vercel URL; end-to-end traffic now works against mock adapters.
+  - **Competitor mentions feature** ([apps/api/src/parsing/extractCompetitors.ts](apps/api/src/parsing/extractCompetitors.ts) + [apps/web/src/components/CompetitorMentions.tsx](apps/web/src/components/CompetitorMentions.tsx), commit `40f4244`) — heuristic NER over stored LLM responses, vertical-specific anchor keywords, per-provider reach counts. New section between AI Blind Spots and the vendor matrix. No DB migration; extracted on-the-fly from `responseRaw`. 5 new unit tests.
+  - **AC-1 pre-flight (real-LLM safety net)** — three commits that gate the real-adapter flip on Railway without burning money or misleading users.
+    - **Tighten audit rate limit + boot banner** (commit `68093c7`) — `POST /audits` 30/min → 3/min per IP (each audit fires up to 240 LLM calls, so the old ceiling allowed ~$30/min per abusive IP). New `getAdapterReport()` logs which providers are real vs falling back to mock at boot, plus a WARN when any provider lacks a key.
+    - **Daily audit count cap** (commit `741d2bf`) — atomic Redis counter `geotracker:audits:count:YYYY-MM-DD` with TTL set on first hit of the day. `DAILY_AUDIT_CAP` env var, default 100/day. Over-cap requests get 429 with `retryAfterSeconds`. Consumed before any DB writes so rejected requests don't leak rows. 3 new integration tests against real Redis.
+    - **Source-tag mock-fallback rows** (commit `700e3e3`) — every `LlmResponse` now carries `source: "real" | "mock" | "mock_fallback"`. The `audit_results.source` nullable text column captures it per cell (migration `0001_audit_results_source.sql`, additive). UI: `AuditRunner` shows an amber "Sample data" banner above the score when any provider's rows are all `mock_fallback`; `LLMGrid` puts a "Sample data" pill under affected column headers. 3 new mock-adapter unit tests.
+  - **Tests:** 79 unit / 8 integration / 0 manual. All green.
+- **Where AC-1 actually sits now:** code is fully prepped. Three things remain, all outside the repo: (1) set `OPENAI_API_KEY` + `ANTHROPIC_API_KEY` + `GOOGLE_GEMINI_API_KEY` on Railway; (2) optionally bump `DAILY_AUDIT_CAP`; (3) flip `LLM_USE_REAL_ADAPTERS=true`. Perplexity + xAI keys not yet sourced — those providers will tag their rows as `mock_fallback` and surface in the UI banner until keys land.
+- **Decisions made this session:**
+  - **Railway over Fly.io / Render** — managed Postgres + Redis in the same project was the deciding factor (SOW v1.1 §11 Q1).
+  - **`tsx` in production over compiling `@geotracker/shared`** — shipping ~2 lines beats a workspace build refactor for a Phase-1 deploy.
+  - **Drop Mapbox from the SOW** — never integrated, never going to be; fixture is the documented fallback.
+- **Still deferred / open:**
+  - **AC-1 (real-LLM flip)** — blocked on Tim's API keys + BRD §14 token-budget sign-off. One env var (`LLM_USE_REAL_ADAPTERS=true`) once cleared.
+  - **Real OAuth (Google + LinkedIn)** — clients not provisioned; routes don't register. Dev-login is the only auth path on Railway today.
+  - **Secrets rotation before public launch** — `SESSION_SECRET`, Railway Postgres password, and dev-login lifecycle decision (delete vs. admin token). All three were exposed in chat during the Session 3 Railway provisioning.
+- **Next:** Tim unblock for AC-1, then real OAuth + secrets rotation as the "before going live" cutover.
 
 ### Session 2 — 2026-05-22 (Gate 4 + Gate 5 automation)
 - **Duration:** ~1h
