@@ -14,6 +14,11 @@ const schema = z.object({
     .default(false)
     .transform((v) => v === true || v === "true"),
 
+  // Second cost-containment layer on top of the per-IP rate limit. Default
+  // 100 audits/day; bump via Railway env when token-budget telemetry
+  // justifies it.
+  DAILY_AUDIT_CAP: z.coerce.number().int().positive().default(100),
+
   OPENAI_API_KEY: z.string().optional(),
   PERPLEXITY_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),

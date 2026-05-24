@@ -11,6 +11,8 @@ import {
 import { db } from "../db/client.js";
 import { audits, auditResults, businesses, industries } from "../db/schema.js";
 import { loadUser } from "../auth/decorate.js";
+import { checkAndConsumeDailyAudit } from "../audits/dailyCap.js";
+import { env } from "../env.js";
 import { auditQueue } from "../orchestrator/queue.js";
 import { inferIndustrySlug } from "../prompts/inferIndustry.js";
 import { extractCompetitors } from "../parsing/extractCompetitors.js";
@@ -45,6 +47,17 @@ export async function auditRoutes(app: FastifyInstance) {
     async (req, reply) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    // Atomic daily cap. Consume before any DB writes so a rejected request
+    // doesn't leak a business or audit row.
+    const cap = await checkAndConsumeDailyAudit(env.DAILY_AUDIT_CAP);
+    if (!cap.allowed) {
+      return reply.code(429).send({
+        error: "daily_audit_cap_exceeded",
+        cap: cap.cap,
+        retryAfterSeconds: 60 * 60, // crude; tells client "come back later"
+      });
+    }
 
     const { domain, businessName, city: cityInput, industrySlug: explicitSlug } = parsed.data;
     const slug =
