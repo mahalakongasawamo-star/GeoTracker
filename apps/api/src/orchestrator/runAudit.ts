@@ -15,6 +15,29 @@ import { resolvePrompts } from "../prompts/resolver.js";
 import { publishProgress } from "../realtime/progress.js";
 import { aggregateScore, bandFor } from "../scoring/score.js";
 
+// Cap simultaneous in-flight calls per provider. The pipeline otherwise
+// fans out (prompts × providers) all at once, which trips free/low-tier
+// RPM limits on OpenAI and Anthropic (audits return 429 for most cells).
+// Two keeps audits fast on paid tiers without blowing up free-tier keys.
+const PER_PROVIDER_CONCURRENCY = 2;
+
+function createGate(limit: number) {
+  let active = 0;
+  const waiters: Array<() => void> = [];
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (active >= limit) {
+      await new Promise<void>((resolve) => waiters.push(resolve));
+    }
+    active += 1;
+    try {
+      return await fn();
+    } finally {
+      active -= 1;
+      waiters.shift()?.();
+    }
+  };
+}
+
 export interface RunAuditInput {
   auditId: string;
   businessId: string;
@@ -47,10 +70,13 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
   const health = createHealthBatch();
 
   const tasks: Array<Promise<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }>> = [];
+  const gates = new Map<LlmProvider, ReturnType<typeof createGate>>();
+  for (const a of adapters) gates.set(a.provider, createGate(PER_PROVIDER_CONCURRENCY));
 
   for (const adapter of adapters) {
+    const gate = gates.get(adapter.provider)!;
     for (const prompt of prompts) {
-      const task = (async () => {
+      const task = gate(async () => {
         const response = await adapter.query({
           prompt: prompt.text,
           businessName: input.businessName,
@@ -91,7 +117,7 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
         };
         await publishProgress(auditId, event);
         return { provider: adapter.provider, band };
-      })();
+      });
 
       tasks.push(task);
     }
