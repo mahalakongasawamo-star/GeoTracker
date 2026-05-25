@@ -18,8 +18,9 @@ import { aggregateScore, bandFor } from "../scoring/score.js";
 // Cap simultaneous in-flight calls per provider. The pipeline otherwise
 // fans out (prompts × providers) all at once, which trips free/low-tier
 // RPM limits on OpenAI and Anthropic (audits return 429 for most cells).
-// Two keeps audits fast on paid tiers without blowing up free-tier keys.
-const PER_PROVIDER_CONCURRENCY = 2;
+// One = serial per provider, survives even tier-0 OpenAI free keys. Bump
+// when keys move to paid tier.
+const PER_PROVIDER_CONCURRENCY = 1;
 
 function createGate(limit: number) {
   let active = 0;
