@@ -11,7 +11,7 @@ interface GeminiResponse {
   };
 }
 
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-2.5-flash";
 
 export function createGeminiAdapter(apiKey: string, model: string = MODEL): LlmAdapter {
   return {
