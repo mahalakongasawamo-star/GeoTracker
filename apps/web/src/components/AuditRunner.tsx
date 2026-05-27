@@ -3,7 +3,7 @@ import { LLM_DISPLAY, LLM_PROVIDERS, type AuditDetail, type LlmProvider, type Pr
 import { getAudit, streamAudit } from "../lib/api";
 import { track } from "../lib/analytics";
 import ScoreGauge from "./ScoreGauge";
-import LLMGrid from "./LLMGrid";
+import LLMGrid, { providersWithPartialAvailability } from "./LLMGrid";
 import BlindSpots from "./BlindSpots";
 import CompetitorMentions from "./CompetitorMentions";
 import VendorMatrix from "./VendorMatrix";
@@ -40,6 +40,22 @@ function SampleDataBanner({ detail }: { detail: AuditDetail }) {
       <strong>Sample data:</strong> {names} {sampleProviders.length === 1 ? "is" : "are"} not yet
       connected to a live API. Those cells use deterministic sample responses so the audit can still
       complete; treat them as illustrative, not actual coverage.
+    </div>
+  );
+}
+
+function PartialCoverageBanner({ detail }: { detail: AuditDetail }) {
+  const partial = useMemo(() => providersWithPartialAvailability(detail.rows), [detail.rows]);
+  if (partial.size === 0) return null;
+
+  const parts = [...partial.entries()]
+    .map(([p, { available, total }]) => `${LLM_DISPLAY[p]} (${available}/${total})`)
+    .join(", ");
+  return (
+    <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+      <strong>Partial coverage:</strong> {parts} returned fewer cells than expected, most often
+      because the provider's free tier rate-limited the audit. Missing cells appear as “—” and are
+      excluded from the score so the gauge reflects only what was actually measured.
     </div>
   );
 }
@@ -122,6 +138,7 @@ export default function AuditRunner({ auditId }: Props) {
         </header>
 
         <SampleDataBanner detail={detail} />
+        <PartialCoverageBanner detail={detail} />
 
         <section className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
           <ScoreGauge score={detail.score} />

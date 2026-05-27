@@ -17,6 +17,29 @@ function providersServingSampleData(rows: AuditResultRow[]): Set<LlmProvider> {
   return out;
 }
 
+export interface ProviderAvailability {
+  available: number;
+  total: number;
+}
+
+// Providers that attempted real API calls but had some cells come back
+// without a usable response (rate-limited, quota-exhausted, network
+// failure). Excludes sample-data providers (those have no key and are
+// labelled separately). Returns the ratio so the UI can be honest about
+// partial coverage instead of silently showing "—" cells.
+export function providersWithPartialAvailability(rows: AuditResultRow[]): Map<LlmProvider, ProviderAvailability> {
+  const out = new Map<LlmProvider, ProviderAvailability>();
+  for (const p of LLM_PROVIDERS) {
+    const providerRows = rows.filter((r) => r.llm === p);
+    if (providerRows.length === 0) continue;
+    if (providerRows.every((r) => r.source === "mock_fallback")) continue;
+    const total = providerRows.length;
+    const available = providerRows.filter((r) => r.scoreBand !== "unavailable").length;
+    if (available < total) out.set(p, { available, total });
+  }
+  return out;
+}
+
 const BAND_GLYPH: Record<string, { glyph: string; bg: string; title: string }> = {
   green: { glyph: "✓", bg: "bg-green-100 text-green-700", title: "Top-3 with contact info" },
   yellow: { glyph: "!", bg: "bg-yellow-100 text-yellow-700", title: "Mentioned but not actionable" },
@@ -30,6 +53,7 @@ export default function LLMGrid({ rows }: Props) {
   const prompts = Array.from(new Set(rows.map((r) => r.promptText)));
   const order: Record<string, number> = { green: 3, yellow: 2, red: 1, unavailable: 0 };
   const sampleProviders = providersServingSampleData(rows);
+  const partialProviders = providersWithPartialAvailability(rows);
   function worstBand(prompt: string, llm: string): string {
     const cells = rows.filter((r) => r.promptText === prompt && r.llm === llm);
     if (cells.length === 0) return "unavailable";
@@ -56,6 +80,14 @@ export default function LLMGrid({ rows }: Props) {
                     title="No API key configured for this provider — cells use deterministic sample data."
                   >
                     Sample data
+                  </div>
+                )}
+                {partialProviders.has(p) && (
+                  <div
+                    className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-800"
+                    title="Some cells from this provider failed (most often a free-tier rate limit). Unavailable cells appear as '—'."
+                  >
+                    {partialProviders.get(p)!.available}/{partialProviders.get(p)!.total} cells
                   </div>
                 )}
               </th>
