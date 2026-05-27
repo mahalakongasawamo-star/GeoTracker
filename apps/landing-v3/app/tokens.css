@@ -1,0 +1,52 @@
+/* Design tokens — single source of truth (§2 of GEOTRACKER_DESIGN_REVISION.md).
+   Tailwind reads these via `colors.* = var(--*)` in tailwind.config.ts, and
+   runtime effects (cursor spotlight, parallax gradients) read them directly. */
+
+:root {
+  /* Surfaces */
+  --bg: #fafaf7;
+  --bg-2: #f3f0e8;
+  --bg-3: #ffffff;
+  --line: #e7e3dc;
+  --line-strong: #d8d2c5;
+
+  /* Ink */
+  --ink: #0c0f14;
+  --ink-2: #5b6370;
+  --ink-3: #8a8f9a;
+
+  /* Brand coral */
+  --coral: #ff5b3e;
+  --coral-soft: #ffe9e3;
+  --coral-deep: #d63b1f;
+
+  /* Semantic */
+  --green: #138a47;
+  --amber: #b97900;
+  --red: #c8362a;
+
+  /* Dark palette (radar, competitor card, featured pricing tier) */
+  --dark: #0a0e15;
+  --dark-2: #131822;
+  --dark-3: #1c2230;
+  --dark-line: #232938;
+  --dark-text: #e8eaef;
+  --dark-text-2: #8b94a8;
+  --dark-text-3: #5d6678;
+
+  /* LLM accent palette */
+  --acid: #c4f042;
+  --cyan: #5ed5f0;
+  --violet: #a685ff;
+  --miss: #ff8474;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(12, 15, 20, 0.04);
+  --shadow-md: 0 4px 16px -4px rgba(12, 15, 20, 0.08);
+  --shadow-lg:
+    0 1px 2px rgba(12, 15, 20, 0.04),
+    0 24px 48px -12px rgba(12, 15, 20, 0.12);
+  --shadow-dark:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 24px 48px -12px rgba(0, 0, 0, 0.5);
+}
