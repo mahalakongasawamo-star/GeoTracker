@@ -31,6 +31,9 @@ export async function buildServer() {
   // redirect dance.
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, { origin: env.WEB_ORIGIN, credentials: true });
+  // @fastify/cors accepts a string[] directly: the response gets the
+  // matching Access-Control-Allow-Origin echoed back per request, not a
+  // wildcard. Each request's Origin header is checked against the list.
   await app.register(cookie, { secret: env.SESSION_SECRET });
   await app.register(rateLimit, {
     // Global ceiling; per-route overrides for /audits (POST) tighten this.

@@ -65,7 +65,7 @@ export async function authRoutes(app: FastifyInstance) {
         name: profile.name,
       });
       reply.setCookie(SESSION_COOKIE, buildSessionCookieValue(user.id), SESSION_COOKIE_OPTIONS);
-      return reply.redirect(`${env.WEB_ORIGIN}/dashboard`);
+      return reply.redirect(`${env.WEB_ORIGIN[0]}/dashboard`);
     });
   }
 
@@ -99,7 +99,7 @@ export async function authRoutes(app: FastifyInstance) {
         name: profile.name,
       });
       reply.setCookie(SESSION_COOKIE, buildSessionCookieValue(user.id), SESSION_COOKIE_OPTIONS);
-      return reply.redirect(`${env.WEB_ORIGIN}/dashboard`);
+      return reply.redirect(`${env.WEB_ORIGIN[0]}/dashboard`);
     });
   }
 
@@ -195,7 +195,7 @@ export async function authRoutes(app: FastifyInstance) {
 
         app.log.warn({ email, userId }, "DEV LOGIN — never enable in production");
         reply.setCookie(SESSION_COOKIE, buildSessionCookieValue(userId), SESSION_COOKIE_OPTIONS);
-        return reply.redirect(`${env.WEB_ORIGIN}/dashboard`);
+        return reply.redirect(`${env.WEB_ORIGIN[0]}/dashboard`);
       },
     );
   }

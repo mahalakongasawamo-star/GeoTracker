@@ -22,7 +22,9 @@ export function buildPulseEmail(input: PulseTemplateInput): { html: string; text
   const display = input.businessName ?? input.businessDomain;
   const headline = `${display} — AI visibility score: ${input.currentScore}/100`;
   const trend = delta(input.currentScore, input.previousScore);
-  const auditUrl = `${env.WEB_ORIGIN}/audit/${input.auditId}`;
+  // Pulse emails link to the canonical (first-listed) web origin even if
+  // WEB_ORIGIN allowlists additional dev / preview origins.
+  const auditUrl = `${env.WEB_ORIGIN[0]}/audit/${input.auditId}`;
 
   const text = [
     headline,
