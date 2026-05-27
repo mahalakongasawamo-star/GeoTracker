@@ -1,10 +1,61 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Aurum Spa Aesthetics fixture per §4. The card-tilt effect (depth-look at
 // cursor, max 8°, 420px influence, 0.08 easing) is wired here. Inner
 // layers parallax via translateZ in the CSS classes.
+//
+// Entrance choreography (tied to the page-load orchestration in
+// HeroLanding): the card itself rides the outer wrapper's card-tilt-in
+// keyframe (starts 580ms, runs 780ms, lands at ~1360ms). The score then
+// counts up 0 → 46 starting at the moment the card lands, and the
+// mini-grid rows fade-stagger right after.
+
+// Entrance start (page-load anchor + card-tilt-in duration) in ms.
+const SCORE_START_DELAY_MS = 1360;
+const SCORE_DURATION_MS = 720;
+
+function easeOutExpo(t: number) {
+  // Same curve the page-load orchestration uses (cubic-bezier(.16,1,.3,1)).
+  return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
+function useScoreCountUp(target: number, startDelayMs: number) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setValue(target);
+      return;
+    }
+
+    let raf = 0;
+    let startTs = 0;
+    let timeout = 0 as unknown as ReturnType<typeof setTimeout>;
+
+    function step(ts: number) {
+      if (!startTs) startTs = ts;
+      const elapsed = ts - startTs;
+      const t = Math.min(1, elapsed / SCORE_DURATION_MS);
+      const next = Math.round(target * easeOutExpo(t));
+      setValue(next);
+      if (t < 1) raf = requestAnimationFrame(step);
+    }
+
+    timeout = setTimeout(() => {
+      raf = requestAnimationFrame(step);
+    }, startDelayMs);
+
+    return () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(raf);
+    };
+  }, [target, startDelayMs]);
+
+  return value;
+}
 
 interface MiniGridRow {
   query: string;
@@ -37,6 +88,7 @@ const LLM_COLS = ["ChatG…", "Perple…", "Claude", "Gemini", "Grok"];
 
 export default function LiveExampleCard() {
   const cardRef = useRef<HTMLDivElement>(null);
+  const displayedScore = useScoreCountUp(FIXTURE.score, SCORE_START_DELAY_MS);
 
   // Card tilt (§5 — max 8°, 420px influence, 0.08 easing). Disabled below
   // 900px viewport and under prefers-reduced-motion. Reads cursor position
@@ -129,13 +181,23 @@ export default function LiveExampleCard() {
           <div className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-2">
             Visibility score
           </div>
-          <div className="inline-flex items-baseline gap-1 text-[72px] font-bold leading-none tracking-[-0.04em] text-ink max-[520px]:text-[56px]">
-            {FIXTURE.score}
+          <div
+            className="inline-flex items-baseline gap-1 text-[72px] font-bold leading-none tracking-[-0.04em] text-ink max-[520px]:text-[56px]"
+            aria-live="polite"
+            aria-label={`Visibility score: ${FIXTURE.score} out of 100`}
+          >
+            <span
+              className="tabular-nums"
+              // tabular-nums keeps the digit width fixed during the count
+              // so the /100 suffix doesn't twitch sideways.
+            >
+              {displayedScore}
+            </span>
             <span className="font-mono text-[15px] font-medium tracking-normal text-ink-3">
               /100
             </span>
           </div>
-          <div className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-coral-deep before:h-2.5 before:w-2.5 before:rounded-full before:content-[''] before:[background:conic-gradient(var(--amber)_0%_50%,var(--line)_50%_100%)]">
+          <div className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-coral-deep motion-safe:animate-enter-fade motion-safe:[animation-delay:1900ms] before:h-2.5 before:w-2.5 before:rounded-full before:content-[''] before:[background:conic-gradient(var(--amber)_0%_50%,var(--line)_50%_100%)]">
             {FIXTURE.verdict}
           </div>
         </div>
@@ -157,7 +219,14 @@ export default function LiveExampleCard() {
           </thead>
           <tbody>
             {FIXTURE.rows.map((row, i) => (
-              <tr key={row.query}>
+              <tr
+                key={row.query}
+                // Rows fade in one-by-one starting ~140ms after the score
+                // count begins. Opacity-only so the table's translateZ(15px)
+                // depth isn't disturbed.
+                className="motion-safe:animate-enter-fade"
+                style={{ animationDelay: `${1500 + i * 120}ms` }}
+              >
                 <td
                   className={`max-w-[110px] py-2 pl-[2px] pr-1 text-left font-medium text-ink ${i === FIXTURE.rows.length - 1 ? "border-b-0" : "border-b border-line"}`}
                 >

@@ -83,6 +83,35 @@ const config: Config = {
             boxShadow: "0 0 12px var(--coral), 0 0 0 12px rgba(255, 91, 62, 0)",
           },
         },
+        // Page-load orchestration. Each element rides the same curve; only
+        // the delay differs (controlled by animation-delay on the element).
+        "enter-up": {
+          "0%": { opacity: "0", transform: "translate3d(0, 14px, 0)" },
+          "100%": { opacity: "1", transform: "translate3d(0, 0, 0)" },
+        },
+        "enter-fade": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "var(--enter-final-opacity, 1)" },
+        },
+        // The LiveExampleCard lands from a slightly tucked angle to its
+        // resting rotate(0.6deg). Tilt finishes ~700ms in; the card-tilt
+        // RAF loop only attaches once the entrance settles (handled in JS).
+        "card-tilt-in": {
+          "0%": {
+            opacity: "0",
+            transform: "rotate(-3.5deg) scale(0.965) translate3d(0, 18px, 0)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "rotate(0.6deg) scale(1) translate3d(0, 0, 0)",
+          },
+        },
+        // Coral hairline sweep across the input on submit. Pure transform,
+        // never animates width/left.
+        "submit-sweep": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "idle-bob-1": "idle-bob-1 18s ease-in-out infinite",
@@ -92,6 +121,12 @@ const config: Config = {
         "idle-bob-2-slow": "idle-bob-2 24s ease-in-out infinite",
         "idle-rotate": "idle-rotate 15s ease-in-out infinite",
         "eyebrow-pulse": "eyebrow-pulse 2s infinite",
+        // Page-load entrance utilities. fill-mode backwards so each element
+        // sits at its 0% frame until its delay elapses (no FOUC flash).
+        "enter-up": "enter-up 620ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "enter-fade": "enter-fade 480ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "card-tilt-in": "card-tilt-in 780ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "submit-sweep": "submit-sweep 900ms cubic-bezier(0.22, 1, 0.36, 1) infinite",
       },
     },
   },
