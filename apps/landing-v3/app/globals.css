@@ -6,12 +6,12 @@
 /* Base reset / page chrome derived from the Aurum mockup. Anything visual
    that's not page-level lives in a component. */
 
-html,
-body {
+html {
   height: 100%;
 }
 
 body {
+  min-height: 100%;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   background: var(--bg);
   color: var(--ink);
@@ -19,14 +19,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Desktop locks to viewport for the no-scroll experience. Mobile (≤900px)
-   allows natural scroll; parallax + spotlight are both disabled. */
+/* Desktop locks to viewport for the no-scroll experience (matches mockup
+   §3 + §6). Both html and body get height:100% + overflow:hidden. */
 @media (min-width: 901px) {
   html,
   body {
+    height: 100%;
     overflow: hidden;
   }
 }
+/* Mobile / tablet: body grows with content. Only horizontal overflow is
+   pinned so long URLs / tables can't push the viewport sideways. */
 @media (max-width: 900px) {
   html,
   body {
