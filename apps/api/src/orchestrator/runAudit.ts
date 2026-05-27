@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { LLM_PROVIDERS, type LlmProvider, type ProgressEvent } from "@geotracker/shared";
 import { db } from "../db/client.js";
 import { auditResults, audits } from "../db/schema.js";
+import { env } from "../env.js";
 import { expandCatchment } from "../geospatial/catchment.js";
 import { createHealthBatch } from "../llm/health.js";
 import { getAllAdapters } from "../llm/index.js";
@@ -15,21 +16,25 @@ import { resolvePrompts } from "../prompts/resolver.js";
 import { publishProgress } from "../realtime/progress.js";
 import { aggregateScore, bandFor } from "../scoring/score.js";
 
-// Cap simultaneous in-flight calls per provider. The pipeline otherwise
-// fans out (prompts × providers) all at once, which trips free/low-tier
-// RPM limits on OpenAI and Anthropic (audits return 429 for most cells).
-// One = serial per provider, survives even tier-0 OpenAI free keys. Bump
-// when keys move to paid tier.
-const PER_PROVIDER_CONCURRENCY = 1;
-
-function createGate(limit: number) {
+// Serialize calls per provider (limit=1) AND enforce a minimum gap between
+// successive call starts (minGapMs). Concurrency alone isn't enough: free-tier
+// RPM caps on Gemini/Anthropic reject calls that arrive faster than the
+// published rate even if only one is in flight at a time. Pacing is sourced
+// from env.PROVIDER_PACE_MS so paid-tier upgrades flip it via env, not code.
+function createPacedGate(minGapMs: number) {
   let active = 0;
+  let lastStart = 0;
   const waiters: Array<() => void> = [];
   return async <T>(fn: () => Promise<T>): Promise<T> => {
-    if (active >= limit) {
+    if (active >= 1) {
       await new Promise<void>((resolve) => waiters.push(resolve));
     }
     active += 1;
+    if (minGapMs > 0) {
+      const wait = lastStart + minGapMs - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    }
+    lastStart = Date.now();
     try {
       return await fn();
     } finally {
@@ -71,8 +76,11 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
   const health = createHealthBatch();
 
   const tasks: Array<Promise<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }>> = [];
-  const gates = new Map<LlmProvider, ReturnType<typeof createGate>>();
-  for (const a of adapters) gates.set(a.provider, createGate(PER_PROVIDER_CONCURRENCY));
+  const gates = new Map<LlmProvider, ReturnType<typeof createPacedGate>>();
+  for (const a of adapters) {
+    const pace = env.LLM_USE_REAL_ADAPTERS ? env.PROVIDER_PACE_MS[a.provider] ?? 0 : 0;
+    gates.set(a.provider, createPacedGate(pace));
+  }
 
   for (const adapter of adapters) {
     const gate = gates.get(adapter.provider)!;

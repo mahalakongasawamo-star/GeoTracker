@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { z } from "zod";
+import type { LlmProvider } from "@geotracker/shared";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -18,6 +19,15 @@ const schema = z.object({
   // 100 audits/day; bump via Railway env when token-budget telemetry
   // justifies it.
   DAILY_AUDIT_CAP: z.coerce.number().int().positive().default(100),
+
+  // Minimum ms between successive call starts per provider. Tuned for current
+  // free-tier RPM caps (Gemini 2.5 Flash ~13 RPM, Anthropic ~5.5 RPM). Flip
+  // to "{}" once keys are on paid tier. Only applied when
+  // LLM_USE_REAL_ADAPTERS=true, so test/mock runs stay fast.
+  PROVIDER_PACE_MS: z
+    .string()
+    .default('{"gemini":4500,"claude":11000}')
+    .transform((s) => JSON.parse(s) as Partial<Record<LlmProvider, number>>),
 
   OPENAI_API_KEY: z.string().optional(),
   PERPLEXITY_API_KEY: z.string().optional(),

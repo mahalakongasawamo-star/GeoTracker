@@ -71,9 +71,10 @@ export function getAdapterReport(): {
   real: LlmProvider[];
   mockFallback: LlmProvider[];
   mock: LlmProvider[];
+  paceMs: Partial<Record<LlmProvider, number>>;
 } {
   if (!env.LLM_USE_REAL_ADAPTERS) {
-    return { realAdaptersEnabled: false, real: [], mockFallback: [], mock: [...LLM_PROVIDERS] };
+    return { realAdaptersEnabled: false, real: [], mockFallback: [], mock: [...LLM_PROVIDERS], paceMs: {} };
   }
   const real: LlmProvider[] = [];
   const mockFallback: LlmProvider[] = [];
@@ -81,7 +82,12 @@ export function getAdapterReport(): {
     if (realAdapter(p)) real.push(p);
     else mockFallback.push(p);
   }
-  return { realAdaptersEnabled: true, real, mockFallback, mock: [] };
+  const paceMs: Partial<Record<LlmProvider, number>> = {};
+  for (const p of real) {
+    const v = env.PROVIDER_PACE_MS[p];
+    if (typeof v === "number" && v > 0) paceMs[p] = v;
+  }
+  return { realAdaptersEnabled: true, real, mockFallback, mock: [], paceMs };
 }
 
 export type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";
