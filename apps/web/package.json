@@ -19,6 +19,7 @@
     "@astrojs/vercel": "9.0.5",
     "@geotracker/shared": "workspace:*",
     "astro": "^5.0.0",
+    "framer-motion": "^11.11.7",
     "posthog-js": "^1.376.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,0 +1,27 @@
+---
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.tsx";
+import GradientMesh from "../components/sample/GradientMesh.tsx";
+import GlassHero from "../components/sample/GlassHero.tsx";
+import LLMMarquee from "../components/sample/LLMMarquee.tsx";
+import LiveAuditDemo from "../components/sample/LiveAuditDemo.tsx";
+import BentoFeatures from "../components/sample/BentoFeatures.tsx";
+import GlassMatrix from "../components/sample/GlassMatrix.tsx";
+import GlassCTA from "../components/sample/GlassCTA.tsx";
+---
+
+<Base title="GeoTracker — AI Visibility, live">
+  <GradientMesh />
+  <Header client:load />
+  <main class="relative">
+    <GlassHero client:load />
+    <LLMMarquee client:visible />
+    <LiveAuditDemo client:visible />
+    <BentoFeatures client:visible />
+    <GlassMatrix client:visible />
+    <GlassCTA client:visible />
+    <footer class="border-t border-white/40 bg-white/40 px-6 py-8 text-center text-xs text-slate-600 backdrop-blur-md">
+      © {new Date().getFullYear()} GeoTracker · Built for the AI-recommendation era
+    </footer>
+  </main>
+</Base>
