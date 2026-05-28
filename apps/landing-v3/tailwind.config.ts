@@ -14,6 +14,7 @@ const config: Config = {
         bg: "var(--bg)",
         "bg-2": "var(--bg-2)",
         "bg-3": "var(--bg-3)",
+        "bg-paper": "var(--bg-paper)",
         line: "var(--line)",
         "line-strong": "var(--line-strong)",
         // Ink

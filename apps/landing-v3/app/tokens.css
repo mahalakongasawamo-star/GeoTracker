@@ -7,6 +7,9 @@
   --bg: #fafaf7;
   --bg-2: #f3f0e8;
   --bg-3: #ffffff;
+  /* Tear-sheet kraft-shift used by the LiveExampleCard. Warmer than bg
+     so the card reads as paper laid over the landing's cream field. */
+  --bg-paper: #f5f1e7;
   --line: #e7e3dc;
   --line-strong: #d8d2c5;
 
