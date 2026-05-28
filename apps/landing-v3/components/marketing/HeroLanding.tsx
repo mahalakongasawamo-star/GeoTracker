@@ -1,3 +1,4 @@
+import Link from "next/link";
 import BrandMark from "@/components/ui/BrandMark";
 import { Floating, FloatingElement } from "@/components/ui/Floating";
 import AuditForm from "./AuditForm";
@@ -76,6 +77,12 @@ export default function HeroLanding() {
               <span className="before:mr-1 before:text-coral before:content-['▸']">
                 Free monthly Pulse Report
               </span>
+              <Link
+                href="/methodology"
+                className="text-ink-2 no-underline transition-colors before:mr-1 before:text-coral before:content-['▸'] hover:text-coral"
+              >
+                How we score
+              </Link>
             </div>
           </div>
 

@@ -14,6 +14,22 @@ import { auditDetailUrl, startAudit } from "@/lib/api";
 
 const SAMPLE_DOMAIN = "aurumspa.com";
 
+// Map thrown API errors to copy that gives the visitor a next step. The
+// brand voice is calm authority, not "ERROR: 400 BAD REQUEST". Unknown
+// errors fall through to a generic friendly line.
+function friendlyError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (/40\d/.test(msg) || /invalid|malformed/i.test(msg))
+    return 'That doesn’t look like a domain. Try "yourbusiness.com" (no http://, no path).';
+  if (/429/.test(msg) || /rate|cap|throttl|too many/i.test(msg))
+    return "Too many audits from your network right now. Give it a minute and try again.";
+  if (/network|fetch|timeout|abort/i.test(msg))
+    return "Couldn’t reach the audit service. Check your connection and try again.";
+  if (/5\d{2}/.test(msg))
+    return "The audit service hit a snag. Give it a moment and try again.";
+  return "Something went wrong. Try again in a moment.";
+}
+
 export default function AuditForm() {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -34,7 +50,7 @@ export default function AuditForm() {
       const { id } = await startAudit({ domain });
       window.location.href = auditDetailUrl(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(friendlyError(err));
       setSubmitting(false);
     }
   }
@@ -91,6 +107,10 @@ export default function AuditForm() {
           <input
             ref={inputRef}
             type="text"
+            inputMode="url"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="yourbusiness.com"
             aria-label="Business domain"
             className="w-full rounded-[10px] border-none bg-transparent px-4 py-3.5 font-sans text-[16px] text-ink outline-none placeholder:text-ink-3"
@@ -118,6 +138,16 @@ export default function AuditForm() {
           )}
         </button>
       </form>
+
+      {/* Point-of-commit reassurance. Editorial aside in Geist (not mono),
+          adjacent to the action so the visitor reads it as they commit.
+          The eyebrow up top says "no signup"; restating it next to the
+          button is where the trust actually lands for the skeptical
+          scanner. */}
+      <p className="mt-3 max-w-[540px] text-[13px] leading-[1.55] text-ink-2">
+        You’ll watch the audit happen, then see a real report you can keep. No
+        email, no signup, about twelve seconds.
+      </p>
 
       <div className="mt-3.5 flex flex-wrap items-center gap-3 text-[13px] text-ink-2">
         <span>Or try a sample:</span>
