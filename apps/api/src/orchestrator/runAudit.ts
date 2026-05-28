@@ -75,7 +75,13 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
   let completedCells = 0;
   const health = createHealthBatch();
 
-  const tasks: Array<Promise<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }>> = [];
+  const tasks: Array<
+    Promise<{
+      provider: LlmProvider;
+      band: ReturnType<typeof bandFor>;
+      realFailure: boolean;
+    }>
+  > = [];
   const gates = new Map<LlmProvider, ReturnType<typeof createPacedGate>>();
   for (const a of adapters) {
     const pace = env.LLM_USE_REAL_ADAPTERS ? env.PROVIDER_PACE_MS[a.provider] ?? 0 : 0;
@@ -111,7 +117,14 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
           hasContactInfo: parsed.hasContactInfo,
           caveatFlag: parsed.caveatFlag,
           scoreBand: band,
-          source: response.source,
+          // A failed real call (HTTP error, empty completion, timeout) still
+          // carries source:"real" on the response object. Persisting that
+          // would make the UI's "Sample data" banner silent for empty rows.
+          // Collapse only the real-failure case to "mock_fallback"; preserve
+          // mock/mock_fallback failures as-is (the mock adapter intentionally
+          // returns ok:false for ~5% of cells to simulate provider downtime).
+          source:
+            !response.ok && response.source === "real" ? "mock_fallback" : response.source,
           inputTokens: response.ok ? response.usage?.inputTokens ?? null : null,
           outputTokens: response.ok ? response.usage?.outputTokens ?? null : null,
         });
@@ -125,7 +138,8 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
           completedRatio: completedCells / totalCells,
         };
         await publishProgress(auditId, event);
-        return { provider: adapter.provider, band };
+        const realFailure = !response.ok && response.source === "real";
+        return { provider: adapter.provider, band, realFailure };
       });
 
       tasks.push(task);
@@ -133,21 +147,30 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
   }
 
   const settled = await Promise.allSettled(tasks);
-  const failedCount = settled.filter((s) => s.status === "rejected").length;
-  const bands = settled
-    .filter((s): s is PromiseFulfilledResult<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }> => s.status === "fulfilled")
-    .map((s) => s.value.band);
+  const rejectedCount = settled.filter((s) => s.status === "rejected").length;
+  const fulfilled = settled
+    .filter(
+      (s): s is PromiseFulfilledResult<{
+        provider: LlmProvider;
+        band: ReturnType<typeof bandFor>;
+        realFailure: boolean;
+      }> => s.status === "fulfilled",
+    )
+    .map((s) => s.value);
+  const bands = fulfilled.map((v) => v.band);
+  // Real-API adapters return ok:false on HTTP error / empty completion rather
+  // than throwing, so the task settles as fulfilled. Count those for the
+  // partial-status check. Mock/mock_fallback failures don't count — they're
+  // simulated provider downtime, expected in fixture/no-key mode.
+  const realFailureCount = fulfilled.filter((v) => v.realFailure).length;
 
   const score = aggregateScore(bands);
   // BRD §7.2: partial success if at least one cell failed but others completed.
   const allProviders = new Set(LLM_PROVIDERS);
-  const seenProviders = new Set(
-    settled
-      .filter((s): s is PromiseFulfilledResult<{ provider: LlmProvider; band: ReturnType<typeof bandFor> }> => s.status === "fulfilled")
-      .map((s) => s.value.provider),
-  );
+  const seenProviders = new Set(fulfilled.map((v) => v.provider));
   const providerCoverage = [...allProviders].every((p) => seenProviders.has(p));
-  const status = failedCount > 0 || !providerCoverage ? "partial" : "complete";
+  const status =
+    rejectedCount > 0 || realFailureCount > 0 || !providerCoverage ? "partial" : "complete";
 
   await db
     .update(audits)
