@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { z } from "zod";
-import type { LlmProvider } from "@geotracker/shared";
+import { LLM_PROVIDERS, type LlmProvider } from "@geotracker/shared";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -50,6 +50,30 @@ const schema = z.object({
     .string()
     .default('{"gemini":4500,"claude":11000}')
     .transform((s) => JSON.parse(s) as Partial<Record<LlmProvider, number>>),
+
+  // Operator-controlled allowlist of providers the audit orchestrator
+  // should call. Empty/unset → all five providers (default behavior).
+  // Set to "claude" on Railway while only one paid key is funded, so
+  // OpenAI/Gemini/Perplexity/Grok don't fan out failed or mock_fallback
+  // cells into every audit. Reversible without a deploy.
+  LLM_ENABLED_PROVIDERS: z
+    .string()
+    .default("")
+    .transform((s): LlmProvider[] => {
+      const list = s
+        .split(",")
+        .map((p) => p.trim().toLowerCase())
+        .filter(Boolean);
+      if (list.length === 0) return [...LLM_PROVIDERS];
+      const valid = new Set<string>(LLM_PROVIDERS);
+      for (const p of list) {
+        if (!valid.has(p))
+          throw new Error(
+            `Invalid LLM_ENABLED_PROVIDERS entry: "${p}". Allowed: ${LLM_PROVIDERS.join(", ")}`,
+          );
+      }
+      return list as LlmProvider[];
+    }),
 
   OPENAI_API_KEY: z.string().optional(),
   PERPLEXITY_API_KEY: z.string().optional(),

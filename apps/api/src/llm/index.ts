@@ -59,26 +59,46 @@ export function getAdapter(provider: LlmProvider): LlmAdapter {
 }
 
 export function getAllAdapters(): LlmAdapter[] {
-  return LLM_PROVIDERS.map(getAdapter);
+  // env.LLM_ENABLED_PROVIDERS defaults to all of LLM_PROVIDERS when the
+  // variable is unset. Operator narrows to a subset (e.g. "claude") to
+  // skip providers without funded keys, so audits don't write empty
+  // real-failure rows or mock_fallback cells into every result.
+  return env.LLM_ENABLED_PROVIDERS.map(getAdapter);
 }
 
-// Operator-facing summary: for each provider, is the live audit pipeline
-// using the real API or silently falling back to mock? Called once at boot
-// so the Railway logs make the coverage state obvious instead of hiding it
-// in adapter behavior.
+// Operator-facing summary: for each enabled provider, is the live audit
+// pipeline using the real API or silently falling back to mock? Called once
+// at boot so the Railway logs make the coverage state obvious. Reflects the
+// LLM_ENABLED_PROVIDERS allowlist — providers operator has disabled show
+// up as `disabled`, not `mockFallback`, so the boot line is honest about
+// what will actually be queried.
 export function getAdapterReport(): {
   realAdaptersEnabled: boolean;
+  enabled: LlmProvider[];
+  disabled: LlmProvider[];
   real: LlmProvider[];
   mockFallback: LlmProvider[];
   mock: LlmProvider[];
   paceMs: Partial<Record<LlmProvider, number>>;
 } {
+  const enabled = env.LLM_ENABLED_PROVIDERS;
+  const enabledSet = new Set<LlmProvider>(enabled);
+  const disabled = LLM_PROVIDERS.filter((p) => !enabledSet.has(p));
+
   if (!env.LLM_USE_REAL_ADAPTERS) {
-    return { realAdaptersEnabled: false, real: [], mockFallback: [], mock: [...LLM_PROVIDERS], paceMs: {} };
+    return {
+      realAdaptersEnabled: false,
+      enabled,
+      disabled,
+      real: [],
+      mockFallback: [],
+      mock: enabled,
+      paceMs: {},
+    };
   }
   const real: LlmProvider[] = [];
   const mockFallback: LlmProvider[] = [];
-  for (const p of LLM_PROVIDERS) {
+  for (const p of enabled) {
     if (realAdapter(p)) real.push(p);
     else mockFallback.push(p);
   }
@@ -87,7 +107,7 @@ export function getAdapterReport(): {
     const v = env.PROVIDER_PACE_MS[p];
     if (typeof v === "number" && v > 0) paceMs[p] = v;
   }
-  return { realAdaptersEnabled: true, real, mockFallback, mock: [], paceMs };
+  return { realAdaptersEnabled: true, enabled, disabled, real, mockFallback, mock: [], paceMs };
 }
 
 export type { LlmAdapter, LlmQuery, LlmResponse } from "./types.js";

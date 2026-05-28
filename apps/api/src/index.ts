@@ -22,10 +22,16 @@ async function main() {
   await app.listen({ port: env.API_PORT, host: "0.0.0.0" });
   const report = getAdapterReport();
   app.log.info({ port: env.API_PORT, ...report }, "api up");
+  if (report.disabled.length > 0) {
+    app.log.info(
+      { disabled: report.disabled, enabled: report.enabled },
+      "LLM_ENABLED_PROVIDERS narrowed the audit scope; disabled providers will not be queried",
+    );
+  }
   if (report.realAdaptersEnabled && report.mockFallback.length > 0) {
     app.log.warn(
       { mockFallback: report.mockFallback },
-      "LLM_USE_REAL_ADAPTERS=true but some providers have no API key and will serve mock data",
+      "LLM_USE_REAL_ADAPTERS=true but some enabled providers have no API key and will serve mock data",
     );
   }
 }

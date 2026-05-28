@@ -4,7 +4,7 @@
 // shell around this function.
 
 import { eq } from "drizzle-orm";
-import { LLM_PROVIDERS, type LlmProvider, type ProgressEvent } from "@geotracker/shared";
+import type { LlmProvider, ProgressEvent } from "@geotracker/shared";
 import { db } from "../db/client.js";
 import { auditResults, audits } from "../db/schema.js";
 import { env } from "../env.js";
@@ -165,8 +165,12 @@ export async function runAudit(input: RunAuditInput): Promise<void> {
   const realFailureCount = fulfilled.filter((v) => v.realFailure).length;
 
   const score = aggregateScore(bands);
-  // BRD §7.2: partial success if at least one cell failed but others completed.
-  const allProviders = new Set(LLM_PROVIDERS);
+  // BRD §7.2: partial success if at least one cell failed but others
+  // completed. Coverage is checked against env.LLM_ENABLED_PROVIDERS, not
+  // the full LLM_PROVIDERS list — when the operator deliberately narrows
+  // the audit scope (e.g. claude-only while other keys are unfunded), a
+  // Claude-only run that fully succeeded is "complete", not "partial".
+  const allProviders = new Set(env.LLM_ENABLED_PROVIDERS);
   const seenProviders = new Set(fulfilled.map((v) => v.provider));
   const providerCoverage = [...allProviders].every((p) => seenProviders.has(p));
   const status =
