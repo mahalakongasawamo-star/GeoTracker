@@ -20,16 +20,20 @@ body {
 }
 
 /* Desktop locks to viewport for the no-scroll experience (matches mockup
-   §3 + §6). Both html and body get height:100% + overflow:hidden. */
+   §3 + §6) — scoped to the landing only. Other routes (/methodology,
+   /audit/[id]) need natural scroll. The `landing-mode` class is added
+   to <html> by components/ui/LandingMode.tsx, mounted only on the
+   landing page. */
 @media (min-width: 901px) {
-  html,
-  body {
+  html.landing-mode,
+  html.landing-mode body {
     height: 100%;
     overflow: hidden;
   }
 }
-/* Mobile / tablet: body grows with content. Only horizontal overflow is
-   pinned so long URLs / tables can't push the viewport sideways. */
+/* Mobile / tablet: body grows with content on all routes. Only horizontal
+   overflow is pinned so long URLs / tables can't push the viewport
+   sideways. */
 @media (max-width: 900px) {
   html,
   body {
@@ -39,8 +43,10 @@ body {
 }
 
 /* Cursor spotlight — coral radial gradient driven by CSS vars set in
-   CursorSpotlight.tsx. Disabled below 900px via the @media block. */
-body::after {
+   CursorSpotlight.tsx. Only present on the landing; other routes don't
+   render CursorSpotlight, so the gradient would otherwise sit as a
+   static center blob. Scoped to landing-mode to prevent that. */
+html.landing-mode body::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -55,7 +61,7 @@ body::after {
   transition: background 0.05s linear;
 }
 @media (max-width: 900px) {
-  body::after {
+  html.landing-mode body::after {
     display: none;
   }
 }
