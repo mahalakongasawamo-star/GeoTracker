@@ -16,8 +16,8 @@ export async function originGuard(req: FastifyRequest, reply: FastifyReply): Pro
   const origin = (req.headers.origin as string | undefined) ?? "";
   const referer = (req.headers.referer as string | undefined) ?? "";
 
-  if (origin && origin === env.WEB_ORIGIN) return;
-  if (referer && referer.startsWith(env.WEB_ORIGIN)) return;
+  if (origin && env.WEB_ORIGIN.includes(origin)) return;
+  if (referer && env.WEB_ORIGIN.some((o) => referer.startsWith(o))) return;
 
   // Allow curl / server-to-server when no Origin/Referer is set.
   // Browsers always set Origin for cross-origin POSTs.

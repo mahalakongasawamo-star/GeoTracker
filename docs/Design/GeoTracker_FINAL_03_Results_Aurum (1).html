@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Audit Results — Aurum Spa Aesthetics · GeoTracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Light palette (carried from Iteration D) */
+    --bg: #fafaf7;
+    --bg-2: #f3f0e8;
+    --bg-3: #ffffff;
+    --line: #e7e3dc;
+    --line-strong: #d8d2c5;
+    --ink: #0c0f14;
+    --ink-2: #5b6370;
+    --ink-3: #8a8f9a;
+    --coral: #ff5b3e;
+    --coral-soft: #ffe9e3;
+    --coral-deep: #d63b1f;
+    --green: #138a47;
+    --amber: #b97900;
+    --red: #c8362a;
+
+    /* Dark card palette (for the orbital radar + competitor card) */
+    --dark: #0a0e15;
+    --dark-2: #131822;
+    --dark-3: #1c2230;
+    --dark-line: #232938;
+    --dark-line-bright: #2e3548;
+    --dark-text: #e8eaef;
+    --dark-text-2: #8b94a8;
+    --dark-text-3: #5d6678;
+    --acid: #c4f042;        /* soft acid lime for "good" signals on dark */
+    --acid-deep: #9fc91f;
+    --cyan: #5ed5f0;
+    --violet: #a685ff;
+
+    --shadow-sm: 0 1px 2px rgba(12, 15, 20, 0.04);
+    --shadow-md: 0 4px 16px -4px rgba(12, 15, 20, 0.08);
+    --shadow-lg: 0 1px 2px rgba(12, 15, 20, 0.04), 0 24px 48px -12px rgba(12, 15, 20, 0.12);
+    --shadow-dark: 0 1px 2px rgba(0, 0, 0, 0.4), 0 24px 48px -12px rgba(0, 0, 0, 0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Geist', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .serif { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-style: italic; }
+  .mono { font-family: 'Geist Mono', monospace; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 40px; }
+  @media (max-width: 720px) { .wrap { padding: 0 20px; } }
+
+  /* Mobile overflow guards */
+  @media (max-width: 900px) {
+    html, body { overflow-x: hidden; max-width: 100vw; }
+    .wrap, .gap-grid, .tier-grid, .analytics-grid { max-width: 100%; min-width: 0; }
+  }
+
+  /* ---- nav ---- */
+  nav {
+    padding: 18px 0; position: sticky; top: 0; z-index: 50;
+    background: rgba(250, 250, 247, 0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .brand-mark {
+    width: 28px; height: 28px; position: relative;
+    background: var(--coral); transform: rotate(45deg); border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(255, 91, 62, 0.35); flex-shrink: 0;
+  }
+  .brand-mark::after { content: ""; position: absolute; inset: 5px; background: var(--bg); border-radius: 3px; }
+  .nav-actions { display: flex; gap: 12px; align-items: center; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 18px; border-radius: 8px;
+    font-family: inherit; font-weight: 600; font-size: 14px;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+    transition: all 0.15s ease; white-space: nowrap; min-height: 40px;
+  }
+  .btn-coral { background: var(--coral); color: white; }
+  .btn-coral:hover { background: var(--coral-deep); transform: translateY(-1px); }
+  .btn-dark { background: var(--ink); color: var(--bg); }
+  .btn-dark:hover { background: var(--coral); transform: translateY(-1px); }
+  .btn-ghost { color: var(--ink); border-color: var(--line-strong); background: transparent; }
+  .btn-ghost:hover { background: var(--bg-2); border-color: var(--ink-2); }
+  @media (max-width: 720px) {
+    .btn { padding: 8px 14px; font-size: 13px; }
+  }
+
+  /* ---- result head ---- */
+  .result-head {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+    position: relative; overflow: hidden;
+  }
+  .result-head::before {
+    content: ""; position: absolute; top: -200px; right: -200px;
+    width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, var(--coral-soft), transparent 65%);
+    pointer-events: none;
+  }
+  .result-head .wrap { position: relative; }
+  .breadcrumb {
+    font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px;
+  }
+  .breadcrumb a { color: var(--ink-2); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--coral); }
+  .breadcrumb .sep { color: var(--ink-3); margin: 0 8px; }
+  .result-top {
+    display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center;
+  }
+  @media (max-width: 720px) {
+    .result-top { grid-template-columns: 1fr; gap: 20px; }
+  }
+  .biz-block h1 {
+    font-size: clamp(28px, 4vw, 44px); font-weight: 700; line-height: 1.05;
+    letter-spacing: -0.025em; margin-bottom: 6px; color: var(--ink);
+  }
+  .biz-meta {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .biz-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .biz-meta .dot-meta {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3);
+  }
+  .head-actions { display: flex; gap: 10px; flex-shrink: 0; }
+  @media (max-width: 520px) {
+    .head-actions { flex-direction: column; width: 100%; }
+    .head-actions .btn { width: 100%; }
+  }
+
+  /* ============================================================
+     ORBITAL RADAR — the centerpiece (Lumen-inspired)
+     ============================================================ */
+  .radar-section { padding: 48px 0; }
+  .radar-card {
+    background: var(--dark);
+    border: 1px solid var(--dark-line);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow-dark);
+    position: relative;
+  }
+  .radar-card::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(196, 240, 66, 0.05), transparent 60%),
+      radial-gradient(circle at 90% 10%, rgba(166, 133, 255, 0.07), transparent 50%);
+    pointer-events: none;
+  }
+  .radar-bar {
+    position: relative; display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px; border-bottom: 1px solid var(--dark-line);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .radar-bar-left { display: flex; align-items: center; gap: 10px; }
+  .radar-bar .dots-row { display: flex; gap: 6px; }
+  .radar-bar .dots-row span { width: 11px; height: 11px; border-radius: 50%; opacity: 0.6; }
+  .radar-bar .dots-row span:nth-child(1) { background: #ff5f57; }
+  .radar-bar .dots-row span:nth-child(2) { background: #febc2e; }
+  .radar-bar .dots-row span:nth-child(3) { background: #28c840; }
+  .radar-bar .title {
+    font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--dark-text-2);
+    margin-left: 12px;
+  }
+  .radar-bar .title strong { color: var(--dark-text); font-weight: 500; }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(196, 240, 66, 0.1); color: var(--acid);
+    font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .live-pill::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--acid);
+    box-shadow: 0 0 8px var(--acid);
+    animation: live-pulse 2s infinite;
+  }
+  @keyframes live-pulse {
+    0%, 100% { box-shadow: 0 0 8px var(--acid); }
+    50% { box-shadow: 0 0 16px var(--acid), 0 0 24px rgba(196, 240, 66, 0.4); }
+  }
+
+  .replay-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--dark-line-bright);
+    color: var(--dark-text-2); font-family: 'Geist Mono', monospace; font-size: 11px;
+    font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .replay-btn:hover {
+    background: rgba(255, 91, 62, 0.1); border-color: var(--coral); color: var(--coral);
+  }
+  .replay-btn:active { transform: scale(0.96); }
+  .replay-btn svg { transition: transform 0.4s ease; }
+  .replay-btn:hover svg { transform: rotate(-90deg); }
+  /* When replaying, spin the icon */
+  .replay-btn.spinning svg { animation: spin-icon 1s linear infinite; }
+  @keyframes spin-icon { to { transform: rotate(-360deg); } }
+
+  .radar-body {
+    position: relative; padding: 36px 24px 28px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    min-height: 580px;
+  }
+  @media (max-width: 900px) {
+    .radar-body { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding: 24px 20px; }
+  }
+
+  /* Metric chips around the radar */
+  .metric-chip {
+    background: var(--dark-2); border: 1px solid var(--dark-line); border-radius: 14px;
+    padding: 14px 16px; align-self: start;
+    position: relative; z-index: 2;
+  }
+  .metric-chip .label {
+    font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--dark-text-3);
+    text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px;
+  }
+  .metric-chip .value {
+    font-size: 28px; font-weight: 700; line-height: 1; color: var(--dark-text);
+    letter-spacing: -0.02em; margin-bottom: 6px;
+  }
+  .metric-chip .value .unit { font-size: 13px; color: var(--dark-text-2); font-weight: 500; margin-left: 2px; }
+  .metric-chip .delta {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+  }
+  .metric-chip .delta.up { color: var(--acid); }
+  .metric-chip .delta.down { color: #ff8474; }
+  .metric-chip .delta.up::before { content: "▲"; }
+  .metric-chip .delta.down::before { content: "▼"; }
+
+  /* Position the four corner chips around the radar */
+  .chips-left { display: flex; flex-direction: column; gap: 16px; justify-content: space-between; }
+  .chips-right { display: flex; flex-direction: column; gap: 16px; justify-content: space-between; align-items: flex-end; }
+  .chips-left .metric-chip, .chips-right .metric-chip { width: 100%; max-width: 200px; }
+  @media (max-width: 900px) {
+    .chips-left, .chips-right { flex-direction: row; }
+    .chips-left .metric-chip, .chips-right .metric-chip { max-width: none; flex: 1; }
+  }
+
+  /* The radar viz itself */
+  .radar-stage {
+    position: relative; aspect-ratio: 1 / 1; max-height: 520px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  @media (max-width: 900px) {
+    .radar-stage { max-height: 340px; }
+  }
+  .radar-stage svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* SVG text elements inside the radar */
+  .radar-stage .hub-label {
+    font-family: 'Geist Mono', monospace; font-size: 11px; fill: var(--dark-text-3);
+    text-transform: uppercase; letter-spacing: 0.18em; font-weight: 500;
+  }
+  .radar-stage .hub-num {
+    font-family: 'Geist', sans-serif; font-size: 56px; font-weight: 700;
+    letter-spacing: -0.04em; fill: var(--dark-text);
+  }
+  .radar-stage .hub-out {
+    font-family: 'Geist Mono', monospace; font-size: 12px; fill: var(--dark-text-3);
+  }
+  .radar-stage .hub-verdict {
+    font-family: 'Geist Mono', monospace; font-size: 11px; fill: var(--coral);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .radar-stage .planet-label {
+    font-family: 'Geist Mono', monospace; font-size: 11px; fill: var(--dark-text-2);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .radar-stage .planet-name { fill: var(--dark-text); font-weight: 500; }
+  .radar-stage .planet-score { fill: var(--dark-text-3); font-size: 10px; }
+
+  .radar-foot {
+    border-top: 1px solid var(--dark-line); padding: 14px 22px;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    position: relative; z-index: 2;
+  }
+  .radar-legend {
+    display: flex; gap: 16px; font-family: 'Geist Mono', monospace; font-size: 11px;
+    color: var(--dark-text-2); text-transform: uppercase; letter-spacing: 0.05em; flex-wrap: wrap;
+  }
+  .radar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .radar-legend .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .swatch.strong { background: var(--acid); box-shadow: 0 0 6px var(--acid); }
+  .swatch.tracking { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .swatch.watch { background: var(--violet); box-shadow: 0 0 6px var(--violet); }
+  .swatch.miss { background: #ff8474; box-shadow: 0 0 6px #ff8474; }
+  .radar-foot .updated {
+    font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--dark-text-3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  /* ============================================================
+     ANALYTICS ROW — three cards (Lumen-style)
+     ============================================================ */
+  .analytics { padding: 56px 0; }
+  .analytics-grid {
+    display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 20px;
+  }
+  @media (max-width: 1100px) { .analytics-grid { grid-template-columns: 1fr 1fr; } .analytics-grid > :last-child { grid-column: 1 / -1; } }
+  @media (max-width: 720px) { .analytics-grid { grid-template-columns: 1fr; } .analytics-grid > :last-child { grid-column: auto; } }
+
+  .anl-card {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 28px;
+  }
+  .anl-card.dark {
+    background: var(--dark); border-color: var(--dark-line); color: var(--dark-text);
+  }
+  .anl-head {
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px;
+  }
+  .anl-head h3 {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .anl-card.dark .anl-head h3 { color: var(--dark-text); }
+  .anl-head .span {
+    font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .anl-card.dark .anl-head .span { color: var(--dark-text-3); }
+
+  /* "Where you appear by LLM" — share-of-voice style bar list */
+  .sov-row {
+    display: grid; grid-template-columns: 90px 1fr 36px; gap: 12px; align-items: center;
+    padding: 9px 0;
+  }
+  .sov-row .name { font-size: 13px; color: var(--ink); }
+  .sov-row .bar-track {
+    height: 8px; background: var(--bg-2); border-radius: 999px; position: relative; overflow: hidden;
+  }
+  .sov-row .bar-fill {
+    position: absolute; left: 0; top: 0; height: 100%; border-radius: 999px;
+  }
+  .sov-row.chatgpt .bar-fill { background: linear-gradient(90deg, var(--acid-deep), var(--acid)); }
+  .sov-row.gemini  .bar-fill { background: linear-gradient(90deg, var(--cyan), #8ee5f5); }
+  .sov-row.claude  .bar-fill { background: linear-gradient(90deg, var(--violet), #c3aaff); }
+  .sov-row.perplex .bar-fill { background: linear-gradient(90deg, var(--coral), #ff8b73); }
+  .sov-row.grok    .bar-fill { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+  .sov-row .num {
+    font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--ink); font-weight: 600; text-align: right;
+  }
+
+  /* "Top queries you're missing" — numbered list */
+  .miss-list { display: flex; flex-direction: column; gap: 14px; }
+  .miss-row {
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 14px; align-items: center;
+  }
+  .miss-num {
+    font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-3);
+  }
+  .miss-text { font-size: 14px; color: var(--ink); line-height: 1.4; }
+  .miss-loss {
+    display: inline-block; padding: 3px 8px; border-radius: 6px;
+    background: var(--coral-soft); color: var(--coral-deep);
+    font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+
+  /* "Competitors out-ranking you" — dark card with deltas */
+  .comp-list { display: flex; flex-direction: column; }
+  .comp-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--dark-line);
+  }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-name {
+    font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--dark-text);
+  }
+  .comp-delta {
+    font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 600;
+  }
+  .comp-delta.lead { color: #ff8474; }
+  .comp-delta.behind { color: var(--acid); }
+
+  /* ============================================================
+     The rest mirrors Iteration D Results (blind spots, compare, pricing, kicker)
+     ============================================================ */
+  .section { padding: 72px 0; }
+  .section-eyebrow {
+    font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--coral);
+    text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: clamp(32px, 5vw, 56px); font-weight: 700; line-height: 1.02;
+    letter-spacing: -0.03em; margin-bottom: 16px; max-width: 800px; color: var(--ink);
+  }
+  .section-title .serif { color: var(--coral); }
+  .section-sub { font-size: 17px; color: var(--ink-2); max-width: 600px; margin-bottom: 48px; }
+
+  /* blind spots */
+  .gap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 900px) { .gap-grid { grid-template-columns: 1fr; } }
+  .gap-card {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 32px;
+    transition: all 0.2s ease;
+  }
+  .gap-card:hover {
+    border-color: var(--coral); transform: translateY(-4px);
+    box-shadow: 0 12px 32px -12px rgba(255, 91, 62, 0.2);
+  }
+  .gap-num {
+    font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 20px;
+  }
+  .gap-card h4 {
+    font-size: 22px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .gap-card p { color: var(--ink-2); font-size: 15px; line-height: 1.6; }
+  .gap-flag {
+    display: inline-block; margin-top: 18px; padding: 4px 10px;
+    background: var(--coral-soft); color: var(--coral-deep);
+    font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em; border-radius: 4px;
+  }
+
+  /* compare */
+  .compare-section { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .compare-wrap { background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-md); }
+  .compare-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.compare { width: 100%; border-collapse: collapse; min-width: 700px; }
+  table.compare th, table.compare td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; }
+  table.compare th { background: var(--bg-2); font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+  table.compare td:first-child { font-weight: 500; color: var(--ink); }
+  table.compare .col-upserv { background: linear-gradient(180deg, var(--coral-soft), rgba(255, 233, 227, 0.3)); border-left: 1px solid rgba(255, 91, 62, 0.25); border-right: 1px solid rgba(255, 91, 62, 0.25); }
+  table.compare thead .col-upserv { background: var(--coral); color: white; }
+  .recc-tag { display: inline-block; padding: 2px 8px; background: white; color: var(--coral); font-size: 10px; font-weight: 700; border-radius: 4px; margin-left: 8px; letter-spacing: 0.05em; }
+  .yes { color: var(--green); font-weight: 600; } .no { color: var(--red); } .meh { color: var(--amber); }
+
+  /* pricing */
+  .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 24px; }
+  @media (max-width: 900px) { .tier-grid { grid-template-columns: 1fr; } }
+  .tier { background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 32px; transition: all 0.2s ease; }
+  .tier:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+  .tier.featured { background: var(--ink); color: var(--bg); border-color: var(--ink); position: relative; }
+  .tier.featured::before {
+    content: "MOST POPULAR"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    padding: 4px 12px; background: var(--coral); color: white;
+    font-family: 'Geist Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; border-radius: 999px;
+  }
+  .tier-label { font-family: 'Geist Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-2); margin-bottom: 14px; }
+  .tier.featured .tier-label { color: var(--coral); }
+  .tier-price { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; margin-bottom: 4px; color: var(--ink); }
+  .tier.featured .tier-price { color: var(--bg); }
+  .tier-per { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 28px; }
+  .tier.featured .tier-per { color: rgba(250, 250, 247, 0.6); }
+  .tier ul { list-style: none; margin-bottom: 28px; }
+  .tier li { padding: 9px 0; font-size: 14px; display: flex; gap: 10px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+  .tier.featured li { border-bottom-color: rgba(255, 255, 255, 0.12); color: rgba(250, 250, 247, 0.85); }
+  .tier li::before { content: "→"; color: var(--coral); font-weight: 700; }
+  .tier .btn { width: 100%; }
+  .tier.featured .btn { background: var(--coral); color: white; border-color: var(--coral); }
+  .tier.featured .btn:hover { background: var(--coral-deep); border-color: var(--coral-deep); }
+
+  /* kicker */
+  .kicker { padding: 96px 0; text-align: center; position: relative; overflow: hidden; }
+  .kicker::before {
+    content: ""; position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 800px; pointer-events: none;
+    background: radial-gradient(circle, var(--coral-soft), transparent 60%); opacity: 0.6;
+  }
+  .kicker .wrap { position: relative; }
+  .kicker .big { font-size: clamp(36px, 6vw, 78px); font-weight: 700; line-height: 1.02; letter-spacing: -0.035em; margin-bottom: 24px; max-width: 900px; margin-left: auto; margin-right: auto; }
+  .kicker .big .serif { color: var(--coral); }
+  .kicker p { font-size: 17px; color: var(--ink-2); max-width: 520px; margin: 0 auto 28px; }
+
+  /* footer */
+  footer { padding: 48px 0 32px; border-top: 1px solid var(--line); font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg-2); }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  footer .coral { color: var(--coral); }
+
+  /* ============================================================
+     ANIMATIONS
+     ============================================================ */
+
+  /* ---- Entrance keyframes ---- */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes svg-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes ring-sweep {
+    from { stroke-dashoffset: 700; opacity: 0; }
+    to   { stroke-dashoffset: 0; opacity: 1; }
+  }
+
+  /* ---- Ambient keyframes ---- */
+  @keyframes hub-breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.025); }
+  }
+  @keyframes coral-glow {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 91, 62, 0.4)); }
+    50%      { filter: drop-shadow(0 0 24px rgba(255, 91, 62, 0.85)); }
+  }
+  @keyframes radar-sweep {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes radar-ping {
+    0%   { r: 60; opacity: 0.8; stroke-width: 2; }
+    100% { r: 230; opacity: 0; stroke-width: 0.3; }
+  }
+  @keyframes score-jitter {
+    0%, 100% { opacity: 1; }
+    97%      { opacity: 1; }
+    98%      { opacity: 0.6; }
+    99%      { opacity: 1; }
+  }
+  @keyframes hub-glow-strong {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 91, 62, 0.4)); }
+    50%      { filter: drop-shadow(0 0 24px rgba(255, 91, 62, 0.75)); }
+  }
+  @keyframes planet-bob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-5px) scale(1.05); }
+  }
+  @keyframes planet-pulse-ring {
+    0%   { transform: scale(1);   opacity: 0.6; }
+    100% { transform: scale(1.8); opacity: 0;   }
+  }
+  @keyframes live-pip {
+    0%, 80%, 100% { opacity: 1; }
+    85%, 95%      { opacity: 0.3; }
+  }
+  @keyframes data-stream {
+    0%   { stroke-dashoffset: 0;    opacity: 0; }
+    20%  { opacity: 0.6; }
+    100% { stroke-dashoffset: -120; opacity: 0; }
+  }
+  @keyframes orbit-cw {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes planet-float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-4px) scale(1.03); }
+  }
+
+  /* ---- Entrance: page-load animation chain ----
+     Each section gets a stagger via animation-delay
+  ============================================ */
+
+  /* radar card animates first */
+  .radar-card {
+    animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  /* chips slide in from their edges */
+  .chips-left .metric-chip:nth-child(1) {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
+  .chips-left .metric-chip:nth-child(2) {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+  }
+  .chips-right .metric-chip:nth-child(1) {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
+  .chips-right .metric-chip:nth-child(2) {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+  }
+
+  /* SVG inner pieces */
+  .radar-stage svg .orbit-ring-outer {
+    animation: ring-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+    stroke-dasharray: 4 6;
+  }
+  .radar-stage svg .orbit-ring-inner {
+    animation: ring-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+    stroke-dasharray: 4 6;
+  }
+  .radar-stage svg .crosshair {
+    animation: svg-fade 1s ease-out 0.7s both;
+  }
+  .radar-stage svg .center-glow {
+    animation: svg-fade 1s ease-out 0.6s both;
+  }
+  .radar-stage svg .score-hub {
+    animation: scale-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both,
+               coral-glow 2.5s ease-in-out 1.5s infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .radar-stage svg .score-hub-ring {
+    animation: scale-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .radar-stage svg .hub-label {
+    animation: svg-fade 0.6s ease-out 0.9s both;
+  }
+  .radar-stage svg .hub-num {
+    animation: svg-fade 0.5s ease-out 1.0s both;
+  }
+  .radar-stage svg .hub-out {
+    animation: svg-fade 0.5s ease-out 1.1s both;
+  }
+  .radar-stage svg .verdict-group {
+    animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  /* Planets pop in clockwise from top */
+  .radar-stage svg .planet-chatgpt    { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.2s both, planet-float 4s ease-in-out 3s infinite; transform-origin: center; transform-box: fill-box; }
+  .radar-stage svg .planet-gemini     { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.35s both, planet-float 4.2s ease-in-out 3.2s infinite; transform-origin: center; transform-box: fill-box; }
+  .radar-stage svg .planet-perplexity { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.50s both, planet-float 4.4s ease-in-out 3.4s infinite; transform-origin: center; transform-box: fill-box; }
+  .radar-stage svg .planet-claude     { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.65s both, planet-float 4.6s ease-in-out 3.6s infinite; transform-origin: center; transform-box: fill-box; }
+  .radar-stage svg .planet-grok       { animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.80s both, planet-float 4.8s ease-in-out 3.8s infinite; transform-origin: center; transform-box: fill-box; }
+
+  /* Planet hover - lift and brighten */
+  .radar-stage svg .planet-group {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .radar-stage svg .planet-group:hover .planet-body {
+    filter: brightness(1.15) drop-shadow(0 0 12px currentColor);
+  }
+  .radar-stage svg .planet-group:hover .planet-halo {
+    opacity: 0.9;
+  }
+
+  /* Radar sweep beam — faster + more visible */
+  .radar-stage svg .sweep-beam {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: radar-sweep 5s linear infinite;
+    opacity: 0.9;
+  }
+  /* Ping rings emanating from score hub - one every 3s, 3 simultaneous */
+  .radar-stage svg .ping-ring {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: radar-ping 3s ease-out infinite;
+  }
+  .radar-stage svg .ping-ring.delay-1 { animation-delay: 1s; }
+  .radar-stage svg .ping-ring.delay-2 { animation-delay: 2s; }
+  /* Pulse rings around each planet */
+  .radar-stage svg .planet-pulse-ring {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: planet-pulse-ring 2.4s ease-out infinite;
+  }
+
+  /* Soft pulse on the score number */
+  .radar-stage svg .hub-num {
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  /* analytics row stagger */
+  .analytics-grid > :nth-child(1) { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.8s both; }
+  .analytics-grid > :nth-child(2) { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.95s both; }
+  .analytics-grid > :nth-child(3) { animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 2.10s both; }
+
+  /* share-of-voice bars: width comes from CSS variable, animation grows from 0 */
+  .sov-row .bar-fill {
+    width: 0;
+    animation: bar-grow 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .sov-row.chatgpt .bar-fill { animation-delay: 2.4s; --bar-w: 82%; }
+  .sov-row.gemini  .bar-fill { animation-delay: 2.5s; --bar-w: 64%; }
+  .sov-row.perplex .bar-fill { animation-delay: 2.6s; --bar-w: 71%; }
+  .sov-row.claude  .bar-fill { animation-delay: 2.7s; --bar-w: 58%; }
+  .sov-row.grok    .bar-fill { animation-delay: 2.8s; --bar-w: 28%; }
+  @keyframes bar-grow {
+    from { width: 0; }
+    to   { width: var(--bar-w); }
+  }
+
+  /* Reduce motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark"></span> GeoTracker</div>
+    <div class="nav-actions">
+      <a class="btn btn-ghost" href="#">New audit</a>
+      <a class="btn btn-coral" href="#pricing">Get Pulse Report</a>
+    </div>
+  </div>
+</nav>
+
+<section class="result-head">
+  <div class="wrap">
+    <div class="breadcrumb">
+      <a href="#">Audits</a><span class="sep">/</span>aurumspa.com
+    </div>
+    <div class="result-top">
+      <div class="biz-block">
+        <h1>Aurum Spa Aesthetics</h1>
+        <div class="biz-meta">
+          <span><span class="dot-meta"></span> Med Spa</span>
+          <span><span class="dot-meta"></span> Beverly Hills, CA</span>
+          <span><span class="dot-meta"></span> 5 LLMs · 6 cities · 12 queries</span>
+          <span><span class="dot-meta"></span> Audited 23 May 2026</span>
+        </div>
+      </div>
+      <div class="head-actions">
+        <a class="btn btn-ghost" href="#">Re-run audit</a>
+        <a class="btn btn-dark" href="#pricing">Get Pulse Report →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ORBITAL RADAR
+     ============================================================ -->
+<section class="radar-section">
+  <div class="wrap">
+    <div class="radar-card">
+      <div class="radar-bar">
+        <div class="radar-bar-left">
+          <div class="dots-row"><span></span><span></span><span></span></div>
+          <div class="title">visibility.<strong>radar</strong></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="replay-btn" onclick="replayRadarAnimation()" aria-label="Replay animation">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            Replay
+          </button>
+          <div class="live-pill">Live audit</div>
+        </div>
+      </div>
+
+      <div class="radar-body">
+        <!-- LEFT chips -->
+        <div class="chips-left">
+          <div class="metric-chip">
+            <div class="label">// Mentions</div>
+            <div class="value">12<span class="unit">/30</span></div>
+            <div class="delta down">8 missed</div>
+          </div>
+          <div class="metric-chip">
+            <div class="label">// Query gaps</div>
+            <div class="value">18</div>
+            <div class="delta down">queries you're losing</div>
+          </div>
+        </div>
+
+        <!-- CENTER radar viz -->
+        <div class="radar-stage">
+          <svg viewBox="-300 -280 600 560" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ff5b3e" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#ff5b3e" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="planetStrong">
+                <stop offset="0%" stop-color="#dafa6a"/>
+                <stop offset="100%" stop-color="#9fc91f"/>
+              </radialGradient>
+              <radialGradient id="planetTracking">
+                <stop offset="0%" stop-color="#8de8f7"/>
+                <stop offset="100%" stop-color="#5ed5f0"/>
+              </radialGradient>
+              <radialGradient id="planetWatch">
+                <stop offset="0%" stop-color="#c3aaff"/>
+                <stop offset="100%" stop-color="#a685ff"/>
+              </radialGradient>
+              <radialGradient id="planetMiss">
+                <stop offset="0%" stop-color="#ff9d8a"/>
+                <stop offset="100%" stop-color="#ff8474"/>
+              </radialGradient>
+              <!-- Radar sweep beam gradient -->
+              <linearGradient id="sweepGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stop-color="#ff5b3e" stop-opacity="0"/>
+                <stop offset="80%" stop-color="#ff5b3e" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#ff5b3e" stop-opacity="0.45"/>
+              </linearGradient>
+            </defs>
+
+            <!-- inner glow behind score hub -->
+            <circle class="center-glow" cx="0" cy="0" r="240" fill="url(#centerGlow)" />
+
+            <!-- ambient radar sweep beam -->
+            <g class="sweep-beam">
+              <path d="M 0 0 L 220 0 A 220 220 0 0 1 195 100 Z" fill="url(#sweepGrad)" />
+            </g>
+
+            <!-- orbit rings (decorative, dashed) -->
+            <circle class="orbit-ring-outer" cx="0" cy="0" r="220" fill="none" stroke="#2a3142" stroke-width="0.8"/>
+            <circle class="orbit-ring-inner" cx="0" cy="0" r="140" fill="none" stroke="#1c2230" stroke-width="0.6"/>
+
+            <!-- crosshairs -->
+            <line class="crosshair" x1="-230" y1="0" x2="230" y2="0" stroke="#1c2230" stroke-width="0.5" stroke-dasharray="3 8" opacity="0.6"/>
+            <line class="crosshair" x1="0" y1="-230" x2="0" y2="230" stroke="#1c2230" stroke-width="0.5" stroke-dasharray="3 8" opacity="0.6"/>
+
+            <!-- score hub -->
+            <circle class="score-hub" cx="0" cy="0" r="60" fill="#0a0e15" stroke="#ff5b3e" stroke-width="1.4" opacity="0.95"/>
+            <circle class="score-hub-ring" cx="0" cy="0" r="68" fill="none" stroke="#ff5b3e" stroke-width="0.4" stroke-dasharray="1 4" opacity="0.5"/>
+
+            <!-- ping rings - emit from score hub outward, three offset by 1s each -->
+            <circle class="ping-ring" cx="0" cy="0" r="60" fill="none" stroke="#ff5b3e" stroke-width="2"/>
+            <circle class="ping-ring delay-1" cx="0" cy="0" r="60" fill="none" stroke="#ff5b3e" stroke-width="2"/>
+            <circle class="ping-ring delay-2" cx="0" cy="0" r="60" fill="none" stroke="#ff5b3e" stroke-width="2"/>
+
+            <!-- // AI VISIBILITY label - above the hub -->
+            <text x="0" y="-88" text-anchor="middle" class="hub-label">// AI VISIBILITY</text>
+
+            <!-- score number inside hub (counter will update via JS) -->
+            <text x="0" y="10" text-anchor="middle" class="hub-num" id="scoreNum">42</text>
+            <text x="0" y="32" text-anchor="middle" class="hub-out">/ 100</text>
+
+            <!-- verdict pill - below the hub -->
+            <g transform="translate(0, 92)">
+              <g class="verdict-group">
+                <rect x="-72" y="-12" width="144" height="22" rx="11" fill="rgba(255, 91, 62, 0.12)" stroke="#ff5b3e" stroke-width="0.6"/>
+                <text x="0" y="3" text-anchor="middle" class="hub-verdict">CRITICALLY INVISIBLE</text>
+              </g>
+            </g>
+
+            <!-- ChatGPT (strong) — top -->
+            <g transform="translate(0, -220)">
+              <g class="planet-group planet-chatgpt" style="color: #c4f042;">
+                <circle class="planet-pulse-ring" r="14" fill="none" stroke="#c4f042" stroke-width="1.2"/>
+                <circle class="planet-body" r="14" fill="url(#planetStrong)"/>
+                <circle class="planet-halo" r="22" fill="none" stroke="#c4f042" stroke-width="0.6" opacity="0.45"/>
+                <text class="planet-label planet-name" x="22" y="0" text-anchor="start">ChatGPT</text>
+                <text class="planet-label planet-score" x="22" y="14" text-anchor="start">82 · strong</text>
+              </g>
+            </g>
+
+            <!-- Gemini (tracking) — top-right -->
+            <g transform="translate(209.2, -68)">
+              <g class="planet-group planet-gemini" style="color: #5ed5f0;">
+                <circle class="planet-pulse-ring" r="11" fill="none" stroke="#5ed5f0" stroke-width="1.2" style="animation-delay: 0.5s;"/>
+                <circle class="planet-body" r="11" fill="url(#planetTracking)"/>
+                <circle class="planet-halo" r="18" fill="none" stroke="#5ed5f0" stroke-width="0.6" opacity="0.45"/>
+                <text class="planet-label planet-name" x="20" y="0" text-anchor="start">Gemini</text>
+                <text class="planet-label planet-score" x="20" y="14" text-anchor="start">64 · tracking</text>
+              </g>
+            </g>
+
+            <!-- Perplexity (tracking) — bottom-right -->
+            <g transform="translate(129.3, 178)">
+              <g class="planet-group planet-perplexity" style="color: #5ed5f0;">
+                <circle class="planet-pulse-ring" r="11" fill="none" stroke="#5ed5f0" stroke-width="1.2" style="animation-delay: 1s;"/>
+                <circle class="planet-body" r="11" fill="url(#planetTracking)"/>
+                <circle class="planet-halo" r="18" fill="none" stroke="#5ed5f0" stroke-width="0.6" opacity="0.45"/>
+                <text class="planet-label planet-name" x="20" y="0" text-anchor="start">Perplexity</text>
+                <text class="planet-label planet-score" x="20" y="14" text-anchor="start">71 · tracking</text>
+              </g>
+            </g>
+
+            <!-- Claude (watch) — bottom-left -->
+            <g transform="translate(-129.3, 178)">
+              <g class="planet-group planet-claude" style="color: #a685ff;">
+                <circle class="planet-pulse-ring" r="10" fill="none" stroke="#a685ff" stroke-width="1.2" style="animation-delay: 1.5s;"/>
+                <circle class="planet-body" r="10" fill="url(#planetWatch)"/>
+                <circle class="planet-halo" r="16" fill="none" stroke="#a685ff" stroke-width="0.6" opacity="0.45"/>
+                <text class="planet-label planet-name" x="-20" y="0" text-anchor="end">Claude</text>
+                <text class="planet-label planet-score" x="-20" y="14" text-anchor="end">58 · watch</text>
+              </g>
+            </g>
+
+            <!-- Grok (miss) — top-left -->
+            <g transform="translate(-209.2, -68)">
+              <g class="planet-group planet-grok" style="color: #ff8474;">
+                <circle class="planet-pulse-ring" r="9" fill="none" stroke="#ff8474" stroke-width="1.2" style="animation-delay: 2s;"/>
+                <circle class="planet-body" r="9" fill="url(#planetMiss)"/>
+                <circle class="planet-halo" r="15" fill="none" stroke="#ff8474" stroke-width="0.6" opacity="0.45"/>
+                <text class="planet-label planet-name" x="-20" y="0" text-anchor="end">Grok</text>
+                <text class="planet-label planet-score" x="-20" y="14" text-anchor="end">28 · miss</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- RIGHT chips -->
+        <div class="chips-right">
+          <div class="metric-chip">
+            <div class="label">// Citations</div>
+            <div class="value">7</div>
+            <div class="delta up">in top-3 results</div>
+          </div>
+          <div class="metric-chip">
+            <div class="label">// Competitors</div>
+            <div class="value">5</div>
+            <div class="delta down">out-ranking you</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="radar-foot">
+        <div class="radar-legend">
+          <span><span class="swatch strong"></span> Strong</span>
+          <span><span class="swatch tracking"></span> Tracking</span>
+          <span><span class="swatch watch"></span> Watch</span>
+          <span><span class="swatch miss"></span> Miss</span>
+        </div>
+        <div class="updated">Updated 2 min ago</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ANALYTICS ROW
+     ============================================================ -->
+<section class="analytics">
+  <div class="wrap">
+    <div class="analytics-grid">
+
+      <!-- Where you appear by LLM -->
+      <div class="anl-card">
+        <div class="anl-head">
+          <h3>Where you appear by LLM</h3>
+          <span class="span">last 30 days</span>
+        </div>
+        <div class="sov-rows">
+          <div class="sov-row chatgpt"><div class="name">ChatGPT</div><div class="bar-track"><div class="bar-fill"></div></div><div class="num">82</div></div>
+          <div class="sov-row gemini"><div class="name">Gemini</div><div class="bar-track"><div class="bar-fill"></div></div><div class="num">64</div></div>
+          <div class="sov-row perplex"><div class="name">Perplexity</div><div class="bar-track"><div class="bar-fill"></div></div><div class="num">71</div></div>
+          <div class="sov-row claude"><div class="name">Claude</div><div class="bar-track"><div class="bar-fill"></div></div><div class="num">58</div></div>
+          <div class="sov-row grok"><div class="name">Grok</div><div class="bar-track"><div class="bar-fill"></div></div><div class="num">28</div></div>
+        </div>
+      </div>
+
+      <!-- Top queries you're missing -->
+      <div class="anl-card">
+        <div class="anl-head">
+          <h3>Top queries you're missing</h3>
+          <span class="span">est. monthly value</span>
+        </div>
+        <div class="miss-list">
+          <div class="miss-row">
+            <div class="miss-num">01</div>
+            <div class="miss-text">Best Botox injector Beverly Hills</div>
+            <div class="miss-loss">~$14,200/mo</div>
+          </div>
+          <div class="miss-row">
+            <div class="miss-num">02</div>
+            <div class="miss-text">Morpheus8 Beverly Hills</div>
+            <div class="miss-loss">~$11,800/mo</div>
+          </div>
+          <div class="miss-row">
+            <div class="miss-num">03</div>
+            <div class="miss-text">Lip filler Los Angeles</div>
+            <div class="miss-loss">~$9,400/mo</div>
+          </div>
+          <div class="miss-row">
+            <div class="miss-num">04</div>
+            <div class="miss-text">Best med spa West Hollywood</div>
+            <div class="miss-loss">~$7,200/mo</div>
+          </div>
+          <div class="miss-row">
+            <div class="miss-num">05</div>
+            <div class="miss-text">PRP facial Beverly Hills</div>
+            <div class="miss-loss">~$5,600/mo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Competitors out-ranking you -->
+      <div class="anl-card dark">
+        <div class="anl-head">
+          <h3>Competitors out-ranking you</h3>
+          <span class="span">vs. top 5</span>
+        </div>
+        <div class="comp-list">
+          <div class="comp-row"><div class="comp-name">epionebh.com</div><div class="comp-delta lead">+34</div></div>
+          <div class="comp-row"><div class="comp-name">skinspirit-bh.com</div><div class="comp-delta lead">+21</div></div>
+          <div class="comp-row"><div class="comp-name">elevationaesthetics.com</div><div class="comp-delta lead">+18</div></div>
+          <div class="comp-row"><div class="comp-name">soracosmetic.com</div><div class="comp-delta lead">+12</div></div>
+          <div class="comp-row"><div class="comp-name">rodeo-aesthetics.com</div><div class="comp-delta behind">−4</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     BLIND SPOTS · COMPARE · PRICING · KICKER
+     ============================================================ -->
+<section class="section" id="gaps">
+  <div class="wrap">
+    <div class="section-eyebrow">// AI Blind Spots</div>
+    <h2 class="section-title">Three reasons the AI <span class="serif">won't say your name.</span></h2>
+    <p class="section-sub">Each gap is fixable. Each gap is bleeding patients to competitors right now.</p>
+    <div class="gap-grid">
+      <div class="gap-card">
+        <div class="gap-num">// Gap 01</div>
+        <h4>No service-page authority</h4>
+        <p>Your Botox and filler pages average 180 words. Top Beverly Hills competitors run 1,400+ word service pages with photos, pricing tables, and provider bios. The AI has nothing premium to cite.</p>
+        <span class="gap-flag">Severity · High</span>
+      </div>
+      <div class="gap-card">
+        <div class="gap-num">// Gap 02</div>
+        <h4>Thin FAQ coverage</h4>
+        <p>You have 8 FAQs. Patients ask AI hundreds of variations — "how long does Botox last," "Morpheus8 downtime," "filler vs PRF" — and the AI has no answers tied to your brand.</p>
+        <span class="gap-flag">Severity · High</span>
+      </div>
+      <div class="gap-card">
+        <div class="gap-num">// Gap 03</div>
+        <h4>No catchment-area signal</h4>
+        <p>You're invisible for "Bel Air," "West Hollywood," and "Brentwood" search terms — the high-value catchments where your highest-LTV patients live. The AI doesn't know you serve them.</p>
+        <span class="gap-flag">Severity · Medium</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section compare-section" id="compare">
+  <div class="wrap">
+    <div class="section-eyebrow">// Compare</div>
+    <h2 class="section-title">Three options. <span class="serif">One that works.</span></h2>
+    <p class="section-sub">DIY platforms hand you a template. Upserv builds you a complete AI-readable footprint, monitored monthly by humans.</p>
+    <div class="compare-wrap">
+      <div class="compare-scroll">
+        <table class="compare">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th class="col-upserv">Upserv <span class="recc-tag">RECOMMENDED</span></th>
+              <th>Wix / Squarespace</th>
+              <th>GoDaddy / WordPress</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>AI visibility audit</td><td class="col-upserv yes">Monthly, automated</td><td class="meh">One-time, manual</td><td class="no">Not included</td></tr>
+            <tr><td>Proactive gap hunting</td><td class="col-upserv yes">Yes</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><td>Human content experts</td><td class="col-upserv yes">Dedicated team</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><td>AEO-optimized FAQs</td><td class="col-upserv yes">100s, definitive</td><td class="no">User-written</td><td class="no">User-written</td></tr>
+            <tr><td>Service page depth</td><td class="col-upserv yes">500+ pages</td><td class="no">Template</td><td class="no">Manual</td></tr>
+            <tr><td>Hosting + maintenance</td><td class="col-upserv yes">Included</td><td class="no">Self-managed</td><td class="no">Self-managed</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-eyebrow">// Pricing</div>
+    <h2 class="section-title">Free to <span class="serif">see the problem.</span> Paid to fix it.</h2>
+    <p class="section-sub">The audit is free forever. Premium gives you the deep diagnostic. Upserv does the actual work.</p>
+    <div class="tier-grid">
+      <div class="tier">
+        <div class="tier-label">// Free</div>
+        <div class="tier-price">$0</div>
+        <div class="tier-per">forever</div>
+        <ul>
+          <li>Visibility score</li>
+          <li>Top 3 gaps</li>
+          <li>Monthly Pulse Report</li>
+          <li>5-LLM coverage</li>
+        </ul>
+        <a class="btn btn-ghost" href="#">Start free</a>
+      </div>
+      <div class="tier featured">
+        <div class="tier-label">// Premium</div>
+        <div class="tier-price">$49</div>
+        <div class="tier-per">per month</div>
+        <ul>
+          <li>Full diagnostic</li>
+          <li>All gaps + severity</li>
+          <li>Competitor benchmarks</li>
+          <li>Catchment expansion</li>
+        </ul>
+        <a class="btn" href="#">Start premium →</a>
+      </div>
+      <div class="tier">
+        <div class="tier-label">// Done-for-you</div>
+        <div class="tier-price">$150</div>
+        <div class="tier-per">/mo · $1k setup</div>
+        <ul>
+          <li>Everything in Premium</li>
+          <li>Human content experts</li>
+          <li>Monthly remediation</li>
+          <li>Hosting + maintenance</li>
+        </ul>
+        <a class="btn btn-ghost" href="#">Book a call →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="kicker">
+  <div class="wrap">
+    <h2 class="big">Now you know where you stand. <span class="serif">Time to own it.</span></h2>
+    <p>Get the monthly Pulse Report free, or have Upserv close every red X for you.</p>
+    <a class="btn btn-coral" href="#pricing">Get Pulse Report →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 GeoTracker · A product by <span class="coral">Iozera</span></div>
+    <div>Privacy · Terms · Contact</div>
+  </div>
+</footer>
+
+<script>
+  // ----- Animated score counter -----
+  // Rolls the central score number from 0 to its target value, in sync with the
+  // CSS entrance animation that fades the digit in at ~1.0s.
+  function startScoreCounter(targetValue, delayMs) {
+    const el = document.getElementById('scoreNum');
+    if (!el) return;
+    el.textContent = '0';
+    const duration = 1400;
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    setTimeout(() => {
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min(1, (now - start) / duration);
+        el.textContent = Math.round(easeOut(t) * targetValue);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }, delayMs);
+  }
+
+  // ----- Animated bar-end numbers in analytics card -----
+  function startBarCounters() {
+    const rows = document.querySelectorAll('.sov-row');
+    if (!rows.length) return;
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    rows.forEach((row, i) => {
+      const numEl = row.querySelector('.num');
+      if (!numEl) return;
+      const target = parseInt(numEl.dataset.target || numEl.textContent, 10);
+      numEl.dataset.target = target;
+      numEl.textContent = '0';
+      setTimeout(() => {
+        const start = performance.now();
+        const duration = 1000;
+        function step(now) {
+          const t = Math.min(1, (now - start) / duration);
+          numEl.textContent = Math.round(easeOut(t) * target);
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }, 2400 + i * 100);
+    });
+  }
+
+  // ----- Live data jitter on score number (subtle simulated update) -----
+  // Every ~7 seconds, briefly flicker the number to suggest it's a live feed.
+  function startLiveJitter() {
+    const el = document.getElementById('scoreNum');
+    if (!el) return;
+    setInterval(() => {
+      const target = parseInt(el.dataset.target || el.textContent, 10);
+      el.dataset.target = target;
+      const offsets = [-1, 0, 1, -1, 0];
+      let i = 0;
+      const jitterStep = () => {
+        if (i >= offsets.length) {
+          el.textContent = target;
+          return;
+        }
+        el.textContent = Math.max(0, target + offsets[i]);
+        i++;
+        setTimeout(jitterStep, 80);
+      };
+      jitterStep();
+    }, 7000);
+  }
+
+  // ----- Replay the whole entrance -----
+  function replayRadarAnimation() {
+    const btn = document.querySelector('.replay-btn');
+    if (btn) btn.classList.add('spinning');
+
+    // Targets for animated entities
+    const animatedSelectors = [
+      '.radar-card',
+      '.chips-left .metric-chip:nth-child(1)',
+      '.chips-left .metric-chip:nth-child(2)',
+      '.chips-right .metric-chip:nth-child(1)',
+      '.chips-right .metric-chip:nth-child(2)',
+      '.radar-stage svg .orbit-ring-outer',
+      '.radar-stage svg .orbit-ring-inner',
+      '.radar-stage svg .crosshair',
+      '.radar-stage svg .center-glow',
+      '.radar-stage svg .score-hub',
+      '.radar-stage svg .score-hub-ring',
+      '.radar-stage svg .hub-label',
+      '.radar-stage svg .hub-num',
+      '.radar-stage svg .hub-out',
+      '.radar-stage svg .verdict-group',
+      '.radar-stage svg .planet-chatgpt',
+      '.radar-stage svg .planet-gemini',
+      '.radar-stage svg .planet-perplexity',
+      '.radar-stage svg .planet-claude',
+      '.radar-stage svg .planet-grok',
+      '.analytics-grid > *',
+      '.sov-row .bar-fill',
+    ];
+
+    // Strip animations, force reflow, re-add
+    animatedSelectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.animation = 'none';
+      });
+    });
+
+    // Force reflow so the browser registers the animation reset
+    document.body.offsetHeight;
+
+    // Clear inline animation override after a tick — restores CSS-defined animations
+    setTimeout(() => {
+      animatedSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+          el.style.animation = '';
+        });
+      });
+      // Re-trigger the counters
+      startScoreCounter(42, 900);
+      startBarCounters();
+
+      if (btn) setTimeout(() => btn.classList.remove('spinning'), 1000);
+    }, 50);
+  }
+
+  // Initial play on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    startScoreCounter(42, 900);
+    startBarCounters();
+    startLiveJitter();
+  });
+</script>
+</body>
+</html>

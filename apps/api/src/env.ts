@@ -5,7 +5,29 @@ import type { LlmProvider } from "@geotracker/shared";
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_PORT: z.coerce.number().int().positive().default(4000),
-  WEB_ORIGIN: z.string().url().default("http://localhost:4321"),
+  // Comma-separated allowlist of web origins. The first entry is the
+  // canonical web origin (used wherever we need a single URL, e.g. the
+  // OAuth redirect_uri). Extra entries are accepted by CORS and
+  // originGuard so dev / preview frontends can talk to a single deployed
+  // API. Trailing slashes and surrounding whitespace are stripped.
+  WEB_ORIGIN: z
+    .string()
+    .default("http://localhost:4321")
+    .transform((s) => {
+      const list = s
+        .split(",")
+        .map((o) => o.trim().replace(/\/+$/, ""))
+        .filter(Boolean);
+      if (list.length === 0) throw new Error("WEB_ORIGIN must list at least one origin");
+      for (const o of list) {
+        try {
+          new URL(o);
+        } catch {
+          throw new Error(`WEB_ORIGIN entry is not a valid URL: ${o}`);
+        }
+      }
+      return list;
+    }),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
