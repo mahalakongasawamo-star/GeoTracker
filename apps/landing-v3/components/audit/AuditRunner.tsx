@@ -54,6 +54,12 @@ export default function AuditRunner({ auditId }: Props) {
       {} as Record<LlmProvider, LlmStatus>,
     ),
   );
+  // Providers that have actually emitted at least one progress event.
+  // When the operator narrows the audit via LLM_ENABLED_PROVIDERS=claude,
+  // only Claude will appear here. The running view filters to this set
+  // once it's non-empty so non-running engines don't sit at "Pending"
+  // for the entire audit.
+  const [seenProviders, setSeenProviders] = useState<Set<LlmProvider>>(new Set());
   const [detail, setDetail] = useState<AuditDetail | null>(null);
   const [tipIdx, setTipIdx] = useState(0);
   const finalizedRef = useRef(false);
@@ -74,10 +80,17 @@ export default function AuditRunner({ auditId }: Props) {
     const close = streamAudit(auditId, (e: ProgressEvent) => {
       setRatio(e.completedRatio);
       if (e.llm) {
+        const llm = e.llm;
         setStatuses((s) => ({
           ...s,
-          [e.llm!]: e.completedRatio >= 1 ? "done" : "running",
+          [llm]: e.completedRatio >= 1 ? "done" : "running",
         }));
+        setSeenProviders((s) => {
+          if (s.has(llm)) return s;
+          const next = new Set(s);
+          next.add(llm);
+          return next;
+        });
       }
       if (e.type === "complete" && !finalizedRef.current) {
         finalizedRef.current = true;
@@ -113,7 +126,22 @@ export default function AuditRunner({ auditId }: Props) {
     return <AuditResult detail={detail} />;
   }
 
-  return <AuditRunning ratio={ratio} statuses={statuses} tip={EDUCATIONAL_TIPS[tipIdx]!} />;
+  // Before any event arrives, show all five providers as pending so the
+  // visitor sees what's possible. Once events start landing, filter to the
+  // engines actually running so narrowed audits don't show ghost rows.
+  const visibleProviders: LlmProvider[] =
+    seenProviders.size > 0
+      ? LLM_PROVIDERS.filter((p) => seenProviders.has(p))
+      : [...LLM_PROVIDERS];
+
+  return (
+    <AuditRunning
+      ratio={ratio}
+      statuses={statuses}
+      providers={visibleProviders}
+      tip={EDUCATIONAL_TIPS[tipIdx]!}
+    />
+  );
 }
 
 // --- Running state -----------------------------------------------------
@@ -121,10 +149,12 @@ export default function AuditRunner({ auditId }: Props) {
 function AuditRunning({
   ratio,
   statuses,
+  providers,
   tip,
 }: {
   ratio: number;
   statuses: Record<LlmProvider, LlmStatus>;
+  providers: LlmProvider[];
   tip: string;
 }) {
   const pct = Math.round(ratio * 100);
@@ -161,11 +191,11 @@ function AuditRunning({
       </div>
       <div className="mb-9 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-ink-3">
         <span>{pct}% complete</span>
-        <span>5 engines · 8 prompts × 6 cities</span>
+        <span>Live · free of charge</span>
       </div>
 
       <ul className="space-y-2">
-        {LLM_PROVIDERS.map((p) => {
+        {providers.map((p) => {
           const s = statuses[p];
           const dotClass =
             s === "done"
@@ -357,8 +387,18 @@ const BAND_GLYPH: Record<
   unavailable: { glyph: "—", cell: "bg-bg text-ink-3", title: "API unavailable" },
 };
 
+// Providers that actually have rows in this audit. When the operator sets
+// LLM_ENABLED_PROVIDERS=claude on Railway, only Claude has rows; iterating
+// all five LLM_PROVIDERS would render four columns of "—" that read as
+// "this provider failed" instead of "this provider wasn't audited".
+function providersInAudit(rows: AuditResultRow[]): LlmProvider[] {
+  const seen = new Set<LlmProvider>(rows.map((r) => r.llm));
+  return LLM_PROVIDERS.filter((p) => seen.has(p));
+}
+
 function LLMCoverageGrid({ rows }: { rows: AuditResultRow[] }) {
   const prompts = useMemo(() => Array.from(new Set(rows.map((r) => r.promptText))), [rows]);
+  const presentProviders = useMemo(() => providersInAudit(rows), [rows]);
   const sampleSet = useMemo(() => new Set(providersServingSampleData(rows)), [rows]);
   const partialMap = useMemo(() => providersWithPartialAvailability(rows), [rows]);
 
@@ -381,7 +421,7 @@ function LLMCoverageGrid({ rows }: { rows: AuditResultRow[] }) {
             <th className="border-b border-line py-2.5 pl-1 pr-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-ink-3">
               Prompt
             </th>
-            {LLM_PROVIDERS.map((p) => (
+            {presentProviders.map((p) => (
               <th
                 key={p}
                 className="border-b border-line p-2.5 text-center font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-ink-3"
@@ -417,7 +457,7 @@ function LLMCoverageGrid({ rows }: { rows: AuditResultRow[] }) {
               >
                 {prompt}
               </td>
-              {LLM_PROVIDERS.map((p) => {
+              {presentProviders.map((p) => {
                 const band = worstBand(prompt, p);
                 const v = BAND_GLYPH[band]!;
                 return (
