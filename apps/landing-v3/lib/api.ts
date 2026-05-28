@@ -1,6 +1,9 @@
-// Client-side wrapper for the Fastify audit endpoint. The same shape and
-// behavior as apps/web's startAudit (apps/web/src/lib/api.ts), kept local
-// here so this app stays standalone and doesn't import from the Astro app.
+// Client-side wrappers for the Fastify audit endpoint. Behavior matches
+// apps/web's lib/api.ts; the M4 port brought the running + result views
+// in-house so /audit/[id] lives here now instead of the (no-longer-deployed)
+// Astro app.
+
+import type { AuditDetail, ProgressEvent } from "@geotracker/shared";
 
 export interface StartAuditInput {
   domain: string;
@@ -26,10 +29,27 @@ export async function startAudit(input: StartAuditInput): Promise<{ id: string }
   return res.json() as Promise<{ id: string }>;
 }
 
-// Built per the design doc's flow: form submit → POST → redirect. M3 only
-// owns the landing, so we cross-redirect to the existing Astro detail page
-// at apps/web/src/pages/audit/[id].astro. M4 will replace this with the
-// /audits/[id]/running route once that exists.
+export async function getAudit(id: string): Promise<AuditDetail> {
+  const res = await fetch(`${API_ORIGIN}/audits/${id}`);
+  if (!res.ok) throw new Error(`audit fetch failed: ${res.status}`);
+  return res.json() as Promise<AuditDetail>;
+}
+
+export function streamAudit(id: string, onEvent: (e: ProgressEvent) => void): () => void {
+  const es = new EventSource(`${API_ORIGIN}/audits/${id}/stream`);
+  es.onmessage = (m) => {
+    try {
+      onEvent(JSON.parse(m.data) as ProgressEvent);
+    } catch {
+      /* malformed frame; SSE will redeliver if it was important */
+    }
+  };
+  return () => es.close();
+}
+
+// Same-origin link from the AuditForm post-submit. WEB_ORIGIN is kept
+// pluggable in case the audit detail page ever moves to a separate
+// deploy again (it lived on apps/web from M1 through pre-M4).
 export function auditDetailUrl(id: string): string {
   return `${WEB_ORIGIN}/audit/${id}`;
 }
