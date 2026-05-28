@@ -7,8 +7,8 @@ import FloatingLLMLogos from "./FloatingLLMLogos";
 
 // The hero of `/`. Composes: status eyebrow, headline, lead, AuditForm,
 // sample-link/trust strip, FloatingLLMLogos (decorative), LiveExampleCard.
-// One <Floating> ticker drives every <FloatingElement> on the page — brand
-// mark, LLM logos, audit-card wrapper.
+// One <Floating> ticker drives the BrandMark and LLM-logo cluster. The
+// tear-sheet card sits outside the parallax (magazine pages are flat).
 //
 // Page-load orchestration: every element below carries an animate-enter-*
 // class with a per-element animation-delay. The stagger reads top-down on
@@ -17,8 +17,7 @@ import FloatingLLMLogos from "./FloatingLLMLogos";
 //
 // LLM logos and the brand mark only carry opacity entrances — their
 // transforms are owned by the Floating RAF loop and would fight a CSS
-// transform keyframe. The LiveExampleCard's entrance lives on a wrapper
-// outside the FloatingElement so the card's own tilt-RAF stays clean.
+// transform keyframe.
 
 export default function HeroLanding() {
   return (
@@ -86,15 +85,12 @@ export default function HeroLanding() {
             </div>
           </div>
 
-          {/* RIGHT: live example card. Entrance lives here, outside the
-              FloatingElement, so the inner card-tilt RAF doesn't fight the
-              keyframe transform. */}
+          {/* RIGHT: live example card. Tear-sheet treatment is a flat
+              editorial page, so it doesn't ride the cursor parallax or
+              need a 3D perspective container. The wrapper keeps the
+              card-tilt-in entrance keyframe for the 0.6deg resting pose. */}
           <div className="relative flex items-center justify-center motion-safe:animate-card-tilt-in motion-safe:[animation-delay:580ms]">
-            <FloatingElement depth={2.5}>
-              <div className="[perspective:1400px] [perspective-origin:center_center]">
-                <LiveExampleCard />
-              </div>
-            </FloatingElement>
+            <LiveExampleCard />
           </div>
         </main>
 
